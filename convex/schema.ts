@@ -34,7 +34,8 @@ const applicationTables = {
     .index("by_user_and_order", ["userId", "mainOrder"])
     .index("by_user_type_and_order", ["userId", "type", "mainOrder"])
     .index("by_user_day_order", ["userId", "dayOrder"])
-    .index("by_parent", ["parentId", "mainOrder"]),
+    .index("by_parent", ["parentId", "mainOrder"])
+    .index("by_user_assigned_date", ["userId", "assignedDate"]),
   users: defineTable({
     name: v.string(),
     tokenIdentifier: v.string(),

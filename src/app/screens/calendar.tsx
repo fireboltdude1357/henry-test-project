@@ -210,6 +210,12 @@ export default function CalendarScreen() {
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(id);
       console.log("isDateContainer", isDateContainer);
       console.log("isDateItem", isDateItem);
+      if (isDateItem) {
+        const dateStr = id.substring(0, 10);
+        const itemId = id.substring(10);
+        console.log("dateStr", dateStr);
+        console.log("itemId", itemId);
+      }
 
       if (isDateContainer) {
         // Allow dragging over day containers (works for all items, including nested ones)
@@ -387,6 +393,14 @@ export default function CalendarScreen() {
               {dateRange.map((date, index) => {
                 const dateStr = formatDateForAPI(date);
                 const dayItems = itemsByDate[dateStr] || [];
+                console.log(
+                  `Day ${dateStr} items:`,
+                  dayItems.map((item) => ({
+                    text: item.text,
+                    dayOrder: item.dayOrder,
+                    assignedDate: item.assignedDate,
+                  }))
+                );
                 const isToday =
                   date.toDateString() === new Date().toDateString();
                 const completedCount = dayItems.filter(
@@ -429,12 +443,19 @@ export default function CalendarScreen() {
 
                         if (draggedItem) {
                           console.log("Assigning item to date:", dateStr);
+                          console.log(
+                            "Dragged item before assignment:",
+                            draggedItem
+                          );
                           assignItemToDate({
                             id: draggedItem._id as Id<"toDoItems">,
                             date: dateStr,
                           })
-                            .then(() => {
-                              console.log("Successfully assigned item to date");
+                            .then((result) => {
+                              console.log(
+                                "Successfully assigned item to date, result:",
+                                result
+                              );
                               // Reset drag state
                               setDraggedItemId(null);
                               setDraggedOverItemId(null);
@@ -510,62 +531,72 @@ export default function CalendarScreen() {
                     <div className="p-6 pt-4">
                       <div className="space-y-3 mb-4">
                         {dayItems.length > 0 ? (
-                          dayItems.map((item) => (
-                            <div
-                              key={dateStr + item._id}
-                              className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
-                                item.completed
-                                  ? "border-green-500/30 bg-green-500/5"
-                                  : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
-                              }`}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                handleDragOver(dateStr + item._id, e);
-                              }}
-                              onDragEnter={(e) => {
-                                e.stopPropagation();
-                              }}
-                              onDragLeave={(e) => {
-                                e.stopPropagation();
-                              }}
-                            >
-                              <div className="flex items-start gap-3">
-                                <input
-                                  type="checkbox"
-                                  checked={item.completed}
-                                  readOnly
-                                  className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div
-                                    className={`text-sm font-medium ${
-                                      item.completed
-                                        ? "line-through text-slate-400"
-                                        : "text-white"
-                                    }`}
-                                  >
-                                    {item.text}
-                                  </div>
-                                  {item.type && (
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <div
-                                        className={`w-2 h-2 rounded-full ${
-                                          item.type === "project"
-                                            ? "bg-purple-500"
-                                            : item.type === "task"
-                                              ? "bg-blue-500"
-                                              : "bg-yellow-500"
-                                        }`}
-                                      ></div>
-                                      <span className="text-xs text-slate-400 capitalize">
-                                        {item.type}
-                                      </span>
+                          dayItems
+                            .sort((a, b) => {
+                              console.log(
+                                `Sorting: ${a.text} (dayOrder: ${a.dayOrder}) vs ${b.text} (dayOrder: ${b.dayOrder})`
+                              );
+                              return (a.dayOrder || 0) - (b.dayOrder || 0);
+                            })
+                            .map((item) => (
+                              <div
+                                key={dateStr + item._id}
+                                className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
+                                  item.completed
+                                    ? "border-green-500/30 bg-green-500/5"
+                                    : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
+                                }`}
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  handleDragOver(dateStr + item._id, e);
+                                }}
+                                onDragEnter={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                onDragLeave={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.completed}
+                                    readOnly
+                                    className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div
+                                      className={`text-sm font-medium ${
+                                        item.completed
+                                          ? "line-through text-slate-400"
+                                          : "text-white"
+                                      }`}
+                                    >
+                                      {item.text}
                                     </div>
-                                  )}
+                                    <div className="text-xs text-slate-400">
+                                      ({item.dayOrder})
+                                    </div>
+                                    {item.type && (
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <div
+                                          className={`w-2 h-2 rounded-full ${
+                                            item.type === "project"
+                                              ? "bg-purple-500"
+                                              : item.type === "task"
+                                                ? "bg-blue-500"
+                                                : "bg-yellow-500"
+                                          }`}
+                                        ></div>
+                                        <span className="text-xs text-slate-400 capitalize">
+                                          {item.type}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))
+                            ))
                         ) : (
                           <div className="text-center py-12">
                             <div className="text-4xl mb-3 opacity-50">📅</div>

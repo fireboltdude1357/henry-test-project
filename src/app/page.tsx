@@ -18,6 +18,33 @@ import HomeScreen from "./screens/home";
 import CalendarScreen from "./screens/calendar";
 
 export default function Home() {
+  return (
+    <>
+      <Authenticated>
+        <Page />
+      </Authenticated>
+      <Unauthenticated>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold text-white">
+                Welcome to Astraea
+              </h1>
+              <p>Login to get started</p>
+            </div>
+          </div>
+          <SignInButton>
+            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg">
+              Sign In
+            </button>
+          </SignInButton>
+        </div>
+      </Unauthenticated>
+    </>
+  );
+}
+
+function Page() {
   const { isLoading, isAuthenticated } = useStoreUserEffect();
   const [screen, setScreen] = useState<"home" | "calendar">("home");
 

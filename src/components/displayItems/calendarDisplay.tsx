@@ -101,6 +101,8 @@ export const CalendarItemDisplay = ({
                 draggedOverItemId={draggedOverItemId}
                 mainOrder={mainOrder}
                 type={type || "task"}
+                draggedItemId={draggedItemId}
+                setDraggedItemId={setDraggedItemId}
               />
             ))}
           </div>
