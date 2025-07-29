@@ -158,93 +158,100 @@ export const ProjectCard = ({
     setAdditionParentId(null);
   };
   return (
-    <div
-      key={_id}
-      draggable={true}
-      onDragStart={(e) => {
-        e.dataTransfer.setData("text/plain", _id);
-        onDragStart?.(_id);
-      }}
-      onDragEnd={() => {
-        onDragEnd?.(_id);
-      }}
-      onDragOver={(e) => {
-        e.preventDefault(); // Allow dropping
-        onDragOver?.(_id, e);
-      }}
-      onDragEnter={() => {
-        onDragEnter?.(_id);
-      }}
-      onDragLeave={() => {
-        onDragLeave?.(_id);
-      }}
-      className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
-        completed
-          ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
-          : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={completed}
-          onChange={() => toggleComplete(_id)}
-          className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
-            completed
-              ? "text-purple-600 focus:ring-purple-500"
-              : "text-purple-600 focus:ring-purple-500"
-          }`}
-        />
-        <span className="text-purple-400 text-sm mr-2">📁</span>
-        <span
-          className={`flex-1 transition-colors duration-200 font-medium ${
-            completed
-              ? "text-purple-400 line-through"
-              : "text-purple-100 group-hover:text-purple-50"
-          }`}
-        >
-          {text}
-        </span>
-        <button
-          onClick={() => setAdditionParentId(_id as Id<"toDoItems">)}
-          className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-          title="Add child"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+    <div className="relative">
+      <div
+        key={_id}
+        draggable={true}
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/plain", _id);
+          onDragStart?.(_id);
+        }}
+        onDragEnd={() => {
+          onDragEnd?.(_id);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault(); // Allow dropping
+          onDragOver?.(_id, e);
+        }}
+        onDragEnter={() => {
+          onDragEnter?.(_id);
+        }}
+        onDragLeave={() => {
+          onDragLeave?.(_id);
+        }}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
+          completed
+            ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
+            : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={completed}
+            onChange={() => toggleComplete(_id)}
+            className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
+              completed
+                ? "text-purple-600 focus:ring-purple-500"
+                : "text-purple-600 focus:ring-purple-500"
+            }`}
+          />
+          <span className="text-purple-400 text-sm mr-2">📁</span>
+          <span
+            className={`flex-1 transition-colors duration-200 font-medium ${
+              completed
+                ? "text-purple-400 line-through"
+                : "text-purple-100 group-hover:text-purple-50"
+            }`}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
-        <span className="text-purple-400 text-xs">({mainOrder})</span>
-        <button
-          onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-          title="Delete project"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            {text}
+          </span>
+          <button
+            onClick={() => setAdditionParentId(_id as Id<"toDoItems">)}
+            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            title="Add child"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </button>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </button>
+          <span className="text-purple-400 text-xs">({mainOrder})</span>
+          <button
+            onClick={handleDelete}
+            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+            title="Delete project"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
+
+      {isDraggedOver && (
+        <div className="absolute top-[-9px] left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
+      )}
+
       {children && children.length > 0 && (
         <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
           {children.map((child) => (
@@ -286,9 +293,6 @@ export const ProjectCard = ({
             )}
           </div>
         </div>
-      )}
-      {isDraggedOver && (
-        <div className="absolute top-[-9px] left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
       )}
     </div>
   );
