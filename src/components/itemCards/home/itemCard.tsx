@@ -1,6 +1,6 @@
 import { TaskCard } from "./taskCard";
 import { ProjectCard } from "./projectCard";
-import { Id } from "../../convex/_generated/dataModel";
+import { Id } from "../../../../convex/_generated/dataModel";
 
 interface ItemCardProps {
   _id: string;
@@ -16,7 +16,7 @@ interface ItemCardProps {
   draggedOverItemId?: string | null;
   mainOrder: number;
   type: "task" | "project" | "folder";
-  setAdditionParentId: (id: Id<"toDoItems"> | null) => void;
+  setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
 }
 
 export const ItemCard = ({ type, ...props }: ItemCardProps) => {

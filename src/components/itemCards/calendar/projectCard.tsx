@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
+import { api } from "../../../../convex/_generated/api";
+import { Id } from "../../../../convex/_generated/dataModel";
 import { useState } from "react";
 import { ItemCard } from "./itemCard";
 
@@ -18,6 +18,8 @@ export const ProjectCard = ({
   draggedOverItemId,
   mainOrder,
   setAdditionParentId,
+  draggedItemId,
+  setDraggedItemId,
 }: {
   _id: string;
   text: string;
@@ -31,7 +33,9 @@ export const ProjectCard = ({
   onDragLeave?: (id: string) => void;
   draggedOverItemId?: string | null;
   mainOrder: number;
-  setAdditionParentId: (id: Id<"toDoItems"> | null) => void;
+  setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
+  draggedItemId: string | null;
+  setDraggedItemId: (id: string | null) => void;
 }) => {
   const isDraggedOver = draggedOverItemId === _id;
   const updateOrder = useMutation(api.toDoItems.updateOrder);
@@ -43,7 +47,7 @@ export const ProjectCard = ({
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
   });
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+
   const [childDraggedOverItemId, setChildDraggedOverItemId] = useState<
     string | null
   >(null);
@@ -60,13 +64,25 @@ export const ProjectCard = ({
       draggedItemId !== id &&
       childDraggedOverItemId !== id
     ) {
-      setChildDraggedOverItemId(id);
-      console.log("Dragging over item:", id);
+      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
+      if (isDateContainer) {
+        setChildDraggedOverItemId(id);
+        console.log("Dragging over date container:", id);
+      } else {
+        setChildDraggedOverItemId(id);
+        console.log("Dragging over item:", id);
+      }
     }
   };
   const handleDragEnd = async (id: string) => {
+    console.log("================================================");
+    console.log("childDraggedOverItemId", childDraggedOverItemId);
     if (childDraggedOverItemId) {
       console.log("Finished dragging item:", id);
+      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(
+        childDraggedOverItemId
+      );
+      console.log("isDateContainer", isDateContainer);
       const draggedItem = children?.find((item) => item._id === draggedItemId);
       const draggedOverItem = children?.find(
         (item) => item._id === childDraggedOverItemId
@@ -135,6 +151,7 @@ export const ProjectCard = ({
 
   const handleDragEnter = (id: string) => {
     // Only log if it's a different item than the one being dragged
+
     if (
       draggedItemId &&
       draggedItemId !== id &&
@@ -146,6 +163,7 @@ export const ProjectCard = ({
 
   const handleDragLeave = (id: string) => {
     // Only log if it's a different item than the one being dragged
+    // console.log("draggedItemId", draggedItemId);
     if (
       draggedItemId &&
       draggedItemId !== id &&
@@ -154,10 +172,12 @@ export const ProjectCard = ({
       console.log("Left item:", id);
     }
   };
-  console.log("children", children);
+  // console.log("children", children);
   const handleDelete = () => {
     deleteProject({ id: _id as Id<"toDoItems"> });
-    setAdditionParentId(null);
+    if (setAdditionParentId) {
+      setAdditionParentId(null);
+    }
   };
 
   const toggleExpanded = () => {
@@ -238,25 +258,27 @@ export const ProjectCard = ({
               </span>
             )}
           </span>
-          <button
-            onClick={() => setAdditionParentId(_id as Id<"toDoItems">)}
-            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            title="Add child"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {setAdditionParentId && (
+            <button
+              onClick={() => setAdditionParentId(_id as Id<"toDoItems">)}
+              className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              title="Add child"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-          </button>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+            </button>
+          )}
           <span className="text-purple-400 text-xs">({mainOrder})</span>
           <button
             onClick={handleDelete}

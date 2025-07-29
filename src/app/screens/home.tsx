@@ -1,52 +1,24 @@
-import { TaskCard } from "@/components/taskCard";
+import { TaskCard } from "@/components/itemCards/home/taskCard";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
-import { ItemCard } from "@/components/itemCard";
+import { ItemCard } from "@/components/itemCards/home/itemCard";
+import { HomeDisplay } from "@/components/displayItems/homeDisplay";
 
-export default function HomeScreen() {
+export default function HomeScreen({
+  setAdditionParentId,
+}: {
+  setAdditionParentId: (id: Id<"toDoItems"> | null) => void;
+}) {
   const toDoItems = useQuery(api.toDoItems.get);
-  const createToDoItem = useMutation(api.toDoItems.create);
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
-  const createChild = useMutation(api.projects.createChild);
-  const [additionParentId, setAdditionParentId] =
-    useState<Id<"toDoItems"> | null>(null);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
-  const [text, setText] = useState("");
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
     null
   );
-  const [itemTypeToAdd, setItemTypeToAdd] = useState<
-    "task" | "project" | "folder"
-  >("task");
-
-  const handleAdd = () => {
-    if (additionParentId) {
-      createChild({
-        parentId: additionParentId,
-        text: text.trim(),
-        type: itemTypeToAdd,
-      });
-    } else {
-      if (text.trim()) {
-        createToDoItem({
-          text: text.trim(),
-          order: maxMainOrder,
-          type: itemTypeToAdd,
-        });
-        setText("");
-      }
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAdd();
-    }
-  };
 
   const handleDragStart = (id: string) => {
     setDraggedItemId(id);
@@ -148,160 +120,52 @@ export default function HomeScreen() {
     toDoItems?.filter((item) => item.parentId === undefined) || [];
   const activeTasks = zeroLevelItems?.filter((item) => !item.completed) || [];
   const completedTasks = zeroLevelItems?.filter((item) => item.completed) || [];
-
   const maxMainOrder = (activeTasks.length || 0) + 1;
+
   return (
-    <div className="space-y-8">
-      {/* Add New Item */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
-        <h2 className="text-xl font-semibold text-white mb-4">Add New Item</h2>
-        <div className="flex gap-3 mb-4">
-          <button onClick={() => setItemTypeToAdd("task")}>Task</button>
-          <button onClick={() => setItemTypeToAdd("project")}>Project</button>
-          <button onClick={() => setItemTypeToAdd("folder")}>Folder</button>
-        </div>
-        {additionParentId && (
-          <div>
-            <p>
-              Adding to{" "}
-              {toDoItems?.find((item) => item._id === additionParentId)?.text}
-            </p>
+    <div className="grid grid-cols-[1fr_3fr] gap-8 h-full">
+      {/* Left Column - Stats */}
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold text-white mb-4">Statistics</h2>
+        {toDoItems && toDoItems.length > 0 && (
+          <div className="space-y-4">
+            <div className="bg-slate-800/30 rounded-lg p-4 border border-slate-700/30">
+              <div className="text-2xl font-bold text-white">
+                {toDoItems.length}
+              </div>
+              <div className="text-slate-300 text-sm">Total Tasks</div>
+            </div>
+            <div className="bg-blue-900/30 rounded-lg p-4 border border-blue-700/30">
+              <div className="text-2xl font-bold text-blue-300">
+                {activeTasks.length}
+              </div>
+              <div className="text-slate-300 text-sm">Active Tasks</div>
+            </div>
+            <div className="bg-green-900/30 rounded-lg p-4 border border-green-700/30">
+              <div className="text-2xl font-bold text-green-300">
+                {completedTasks.length}
+              </div>
+              <div className="text-slate-300 text-sm">Completed</div>
+            </div>
           </div>
         )}
-        <div className="flex gap-3">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="What needs to be done?"
-            className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={!text.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
-          >
-            Add {itemTypeToAdd}
-          </button>
-        </div>
       </div>
 
-      {/* Stats */}
-      {toDoItems && toDoItems.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-800/30 rounded-lg p-4 border border-slate-700/30">
-            <div className="text-2xl font-bold text-white">
-              {toDoItems.length}
-            </div>
-            <div className="text-slate-300 text-sm">Total Tasks</div>
-          </div>
-          <div className="bg-blue-900/30 rounded-lg p-4 border border-blue-700/30">
-            <div className="text-2xl font-bold text-blue-300">
-              {activeTasks.length}
-            </div>
-            <div className="text-slate-300 text-sm">Active Tasks</div>
-          </div>
-          <div className="bg-green-900/30 rounded-lg p-4 border border-green-700/30">
-            <div className="text-2xl font-bold text-green-300">
-              {completedTasks.length}
-            </div>
-            <div className="text-slate-300 text-sm">Completed</div>
-          </div>
-        </div>
-      )}
-
-      {/* Active Tasks */}
-      {activeTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">
-            Active Tasks ({activeTasks.length})
-          </h3>
-          <div className="space-y-3">
-            {activeTasks.map(({ _id, text, completed, mainOrder, type }) => (
-              <ItemCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={() =>
-                  toggleComplete({ id: _id as Id<"toDoItems"> })
-                }
-                deleteItem={() => deleteItem({ id: _id as Id<"toDoItems"> })}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
-                setAdditionParentId={setAdditionParentId}
-                type={type || "task"}
-              />
-            ))}
-            {/* Invisible bottom drop zone */}
-            <div
-              id="bottom"
-              onDragOver={(e) => {
-                e.preventDefault();
-                handleDragOver("bottom", e);
-              }}
-              onDragEnter={() => handleDragEnter("bottom")}
-              onDragLeave={() => handleDragLeave("bottom")}
-              className="h-8 w-full relative"
-            >
-              {draggedOverItemId === "bottom" && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Completed Tasks */}
-      {completedTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-300">
-            Completed Tasks ({completedTasks.length})
-          </h3>
-          <div className="space-y-3">
-            {completedTasks.map(({ _id, text, completed, mainOrder, type }) => (
-              <ItemCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={() =>
-                  toggleComplete({ id: _id as Id<"toDoItems"> })
-                }
-                deleteItem={() => deleteItem({ id: _id as Id<"toDoItems"> })}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
-                type={type || "task"}
-                setAdditionParentId={setAdditionParentId}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {(!toDoItems || toDoItems.length === 0) && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📝</div>
-          <h3 className="text-xl font-semibold text-white mb-2">
-            No tasks yet
-          </h3>
-          <p className="text-slate-400">
-            Add your first task above to get started!
-          </p>
-        </div>
-      )}
+      {/* Right Column - Active and Completed Tasks */}
+      <HomeDisplay
+        activeTasks={activeTasks}
+        completedTasks={completedTasks}
+        setAdditionParentId={setAdditionParentId}
+        draggedOverItemId={draggedOverItemId}
+        handleDragOver={handleDragOver}
+        handleDragEnter={handleDragEnter}
+        handleDragLeave={handleDragLeave}
+        handleDragStart={handleDragStart}
+        handleDragEnd={handleDragEnd}
+        toggleComplete={(id) => toggleComplete({ id })}
+        deleteItem={(id) => deleteItem({ id })}
+        toDoItems={toDoItems || []}
+      />
     </div>
   );
 }

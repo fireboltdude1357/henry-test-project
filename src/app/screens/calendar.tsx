@@ -1,32 +1,104 @@
-import { TaskCard } from "@/components/taskCard";
+import { TaskCard } from "@/components/itemCards/home/taskCard";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { CalendarItemDisplay } from "@/components/displayItems/calendarDisplay";
 
 export default function CalendarScreen() {
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [numDays, setNumDays] = useState<number>(3);
+  const [startDate, setStartDate] = useState<Date>(new Date());
   const toDoItems = useQuery(api.toDoItems.get);
-  const createToDoItem = useMutation(api.toDoItems.create);
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
-  const [text, setText] = useState("");
+  const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
     null
   );
 
-  const handleAdd = () => {
-    if (text.trim()) {
-      createToDoItem({ text: text.trim(), order: maxMainOrder });
-      setText("");
+  // Generate array of dates for the view
+  const dateRange = useMemo(() => {
+    const dates = [];
+    for (let i = 0; i < numDays; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      dates.push(date);
     }
+    return dates;
+  }, [startDate, numDays]);
+
+  // Format date to YYYY-MM-DD string for API
+  const formatDateForAPI = (date: Date) => {
+    return date.toISOString().split("T")[0];
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAdd();
-    }
+  // Query items for the date range
+  const items = useQuery(api.toDoItems.getItemsByDateRange, {
+    startDate: formatDateForAPI(dateRange[0]),
+    endDate: formatDateForAPI(dateRange[dateRange.length - 1]),
+  });
+
+  // Group items by date
+  const itemsByDate = useMemo(() => {
+    if (!items) return {};
+
+    const grouped: { [key: string]: typeof items } = {};
+    items.forEach((item) => {
+      if (item.assignedDate) {
+        if (!grouped[item.assignedDate]) {
+          grouped[item.assignedDate] = [];
+        }
+        grouped[item.assignedDate].push(item);
+      }
+    });
+    return grouped;
+  }, [items]);
+
+  // Navigation functions
+  const goToPreviousDays = () => {
+    const newStartDate = new Date(startDate);
+    newStartDate.setDate(startDate.getDate() - numDays);
+    setStartDate(newStartDate);
+  };
+
+  const goToNextDays = () => {
+    const newStartDate = new Date(startDate);
+    newStartDate.setDate(startDate.getDate() + numDays);
+    setStartDate(newStartDate);
+  };
+
+  const goToToday = () => {
+    setStartDate(new Date());
+  };
+
+  // Format date for display
+  const formatDateForDisplay = (date: Date) => {
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+    const isYesterday =
+      date.toDateString() ===
+      new Date(today.getTime() - 24 * 60 * 60 * 1000).toDateString();
+    const isTomorrow =
+      date.toDateString() ===
+      new Date(today.getTime() + 24 * 60 * 60 * 1000).toDateString();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+    if (isTomorrow) return "Tomorrow";
+
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getDayOfWeek = (date: Date) => {
+    return date.toLocaleDateString("en-US", { weekday: "long" });
   };
 
   const handleDragStart = (id: string) => {
@@ -36,75 +108,126 @@ export default function CalendarScreen() {
   };
 
   const handleDragEnd = async (id: string) => {
-    if (draggedOverItemId) {
-      console.log("Finished dragging item:", id);
+    console.log("================================================");
+    console.log("draggedItemId", draggedItemId);
+    console.log("draggedOverItemId", draggedOverItemId);
+    if (draggedOverItemId && draggedItemId) {
+      console.log("Finished dragging item in calendar.tsx on line 115:", id);
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
-      const draggedOverItem = toDoItems?.find(
-        (item) => item._id === draggedOverItemId
-      );
-      console.log("Dragged item:", draggedItem);
-      console.log("Dragged over item:", draggedOverItem);
-      console.log("Dragged over item id:", draggedOverItemId);
-      console.log("Dragged over item:", draggedOverItem);
-      if (draggedItem && (draggedOverItem || draggedOverItemId === "bottom")) {
-        console.log("Dragged item and dragged over item CP");
-        let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
 
-        const movingItemOldOrder = draggedItem?.mainOrder || movingItemNewOrder;
-        if (draggedOverItemId === "bottom") {
-          movingItemNewOrder = maxMainOrder;
-          // movingItemOldOrder = maxMainOrder;
+      console.log("Drag end - draggedItemId:", draggedItemId);
+      console.log("Drag end - draggedOverItemId:", draggedOverItemId);
+      console.log("Drag end - isDateContainer:", isDateContainer);
+      console.log("Drag end - draggedItem:", draggedItem);
+
+      if (isDateContainer && draggedItem) {
+        // Handle dropping on a day container - assign item to that date
+        console.log("Assigning item to date:", draggedOverItemId);
+        try {
+          await assignItemToDate({
+            id: draggedItem._id as Id<"toDoItems">,
+            date: draggedOverItemId,
+          });
+          console.log("Successfully assigned item to date");
+        } catch (error) {
+          console.error("Failed to assign item to date:", error);
         }
-        const difference = movingItemNewOrder - movingItemOldOrder;
-        console.log("Difference:", difference);
-        // console.log("Moving item new order:", movingItemNewOrder);
-        // console.log("Moving item old order:", movingItemOldOrder);
-        let interval = 0;
-        if (difference > 0) {
-          interval = 1;
-          movingItemNewOrder = movingItemNewOrder - 1;
-        } else {
-          interval = -1;
-        }
-        // console.log("Updating order for item:", movingItemOldOrder);
-        //
-        console.log("Moving item new order:", movingItemNewOrder);
-        console.log("Moving item old order:", movingItemOldOrder);
-        for (
-          let i = movingItemOldOrder + interval;
-          i !== movingItemNewOrder + interval;
-          i += interval
-        ) {
-          console.log("Updating order for item:", i);
-          const item = toDoItems?.find((item) => item.mainOrder === i);
-          if (item) {
-            updateOrder({
-              id: item._id as Id<"toDoItems">,
-              order: item.mainOrder - interval,
-            });
+      } else if (draggedOverItemId !== "bottom") {
+        // Handle dropping on other todo items (existing reordering logic)
+        // Only do reordering if we're not dropping on a date container
+        const draggedOverItem = toDoItems?.find(
+          (item) => item._id === draggedOverItemId
+        );
+        console.log("Dragged item:", draggedItem);
+        console.log("Dragged over item:", draggedOverItem);
+        console.log("Dragged over item id:", draggedOverItemId);
+
+        if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
+          console.log("Reordering items");
+          let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+
+          const movingItemOldOrder =
+            draggedItem?.mainOrder || movingItemNewOrder;
+
+          const difference = movingItemNewOrder - movingItemOldOrder;
+          console.log("Difference:", difference);
+
+          let interval = 0;
+          if (difference > 0) {
+            interval = 1;
+            movingItemNewOrder = movingItemNewOrder - 1;
+          } else {
+            interval = -1;
           }
+
+          console.log("Moving item new order:", movingItemNewOrder);
+          console.log("Moving item old order:", movingItemOldOrder);
+          for (
+            let i = movingItemOldOrder + interval;
+            i !== movingItemNewOrder + interval;
+            i += interval
+          ) {
+            console.log("Updating order for item:", i);
+            const item = toDoItems?.find((item) => item.mainOrder === i);
+            if (item) {
+              updateOrder({
+                id: item._id as Id<"toDoItems">,
+                order: item.mainOrder - interval,
+              });
+            }
+          }
+          updateOrder({
+            id: draggedItemId as Id<"toDoItems">,
+            order: movingItemNewOrder,
+          });
         }
+      } else if (draggedOverItemId === "bottom" && draggedItem) {
+        // Handle dropping at bottom
+        console.log("Dropping at bottom");
         updateOrder({
           id: draggedItemId as Id<"toDoItems">,
-          order: movingItemNewOrder,
+          order: maxMainOrder,
         });
-        // updateOrder({
-        //   id: draggedOverItemId as Id<"toDoItems">,
-        //   order: draggedItem?.mainOrder || 0,
-        // });
       }
     }
     setDraggedItemId(null);
     setDraggedOverItemId(null);
-    console.log("Finished dragging item:", id);
-    // You can add any additional logic here when drag ends
+    console.log("Finished dragging item in calendar.tsx on line 196:", id);
   };
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
-    // Only log if it's a different item than the one being dragged
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
-      setDraggedOverItemId(id);
-      console.log("Dragging over item:", id);
+      console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
+      // Only log if it's a different item than the one being dragged
+      // console.log("Dragging over item:", id);
+      console.log("draggedItemId", draggedItemId);
+      console.log("id", id);
+      console.log("draggedOverItemId", draggedOverItemId);
+      // Check if it's a day container (date string format YYYY-MM-DD)
+      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
+      // Check if it's a date item (date string followed by Convex ID)
+      const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(id);
+      console.log("isDateContainer", isDateContainer);
+      console.log("isDateItem", isDateItem);
+
+      if (isDateContainer) {
+        // Allow dragging over day containers (works for all items, including nested ones)
+        setDraggedOverItemId(id);
+        console.log("Dragging over day:", id);
+      } else if (isDateItem) {
+        // Extract the date part from the date item ID (first 10 characters: YYYY-MM-DD)
+        const dateStr = id.substring(0, 10);
+        setDraggedOverItemId(dateStr);
+        console.log("Dragging over date item, treating as day:", dateStr);
+      } else {
+        // Handle dragging over todo items - removed parentId restriction
+        const draggedOverItem = toDoItems?.find((item) => item._id === id);
+        if (draggedOverItem) {
+          setDraggedOverItemId(id);
+          console.log("Dragging over item:", id);
+        }
+      }
     }
   };
 
@@ -116,105 +239,378 @@ export default function CalendarScreen() {
   };
 
   const handleDragLeave = (id: string) => {
+    console.log("Left item:", id);
     // Only log if it's a different item than the one being dragged
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("Left item:", id);
     }
   };
-
-  const activeTasks = toDoItems?.filter((item) => !item.completed) || [];
-  const completedTasks = toDoItems?.filter((item) => item.completed) || [];
-
+  const zeroLevelItems =
+    toDoItems?.filter((item) => item.parentId === undefined) || [];
+  const activeTasks = zeroLevelItems?.filter((item) => !item.completed) || [];
+  const completedTasks = zeroLevelItems?.filter((item) => item.completed) || [];
   const maxMainOrder = (activeTasks.length || 0) + 1;
+
   return (
-    <div className="space-y-8">
-      {/* Active Tasks */}
-      {activeTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">
-            Active Tasks ({activeTasks.length})
-          </h3>
-          <div className="space-y-3">
-            {activeTasks.map(({ _id, text, completed, mainOrder }) => (
-              <TaskCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={() =>
-                  toggleComplete({ id: _id as Id<"toDoItems"> })
-                }
-                deleteItem={() => deleteItem({ id: _id as Id<"toDoItems"> })}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
-              />
-            ))}
-            {/* Invisible bottom drop zone */}
-            <div
-              id="bottom"
-              onDragOver={(e) => {
-                e.preventDefault();
-                handleDragOver("bottom", e);
-              }}
-              onDragEnter={() => handleDragEnter("bottom")}
-              onDragLeave={() => handleDragLeave("bottom")}
-              className="h-8 w-full relative"
-            >
-              {draggedOverItemId === "bottom" && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="max-w-[1600px] mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Calendar</h1>
+              <p className="text-slate-400">
+                Plan and organize your tasks by day
+              </p>
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 bg-slate-800/50 rounded-lg px-4 py-2 border border-slate-700">
+                <span className="text-slate-300 text-sm font-medium">
+                  View:
+                </span>
+                <select
+                  value={numDays}
+                  onChange={(e) => setNumDays(Number(e.target.value))}
+                  className="bg-slate-700 text-white px-3 py-1.5 rounded-md border border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value={1}>1 Day</option>
+                  <option value={3}>3 Days</option>
+                  <option value={5}>5 Days</option>
+                  <option value={7}>7 Days</option>
+                </select>
+              </div>
+
+              <button
+                onClick={goToToday}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-600/20"
+              >
+                Today
+              </button>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Completed Tasks */}
-      {completedTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-300">
-            Completed Tasks ({completedTasks.length})
-          </h3>
-          <div className="space-y-3">
-            {completedTasks.map(({ _id, text, completed, mainOrder }) => (
-              <TaskCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={() =>
-                  toggleComplete({ id: _id as Id<"toDoItems"> })
-                }
-                deleteItem={() => deleteItem({ id: _id as Id<"toDoItems"> })}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
-              />
-            ))}
+        <div className="grid grid-cols-[300px_1fr] gap-8">
+          {/* Sidebar - Task List */}
+          <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700/50 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-white mb-4">Task List</h2>
+            <CalendarItemDisplay
+              activeTasks={activeTasks}
+              completedTasks={completedTasks}
+              draggedOverItemId={draggedOverItemId}
+              handleDragOver={handleDragOver}
+              handleDragEnter={handleDragEnter}
+              handleDragLeave={handleDragLeave}
+              handleDragStart={handleDragStart}
+              handleDragEnd={handleDragEnd}
+              toggleComplete={(id) => toggleComplete({ id })}
+              deleteItem={(id) => deleteItem({ id })}
+              toDoItems={toDoItems || []}
+              draggedItemId={draggedItemId}
+              setDraggedItemId={setDraggedItemId}
+            />
+          </div>
+
+          {/* Main Calendar Area */}
+          <div className="space-y-6">
+            {/* Navigation */}
+            <div className="flex items-center justify-between bg-slate-800/30 rounded-xl p-4 border border-slate-700/50 backdrop-blur-sm">
+              <button
+                onClick={goToPreviousDays}
+                className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Previous {numDays} day{numDays > 1 ? "s" : ""}
+              </button>
+
+              <div className="text-center">
+                <div className="text-white text-xl font-semibold">
+                  {formatDateForDisplay(dateRange[0])}
+                  {numDays > 1 &&
+                    ` - ${formatDateForDisplay(dateRange[dateRange.length - 1])}`}
+                </div>
+                <div className="text-slate-400 text-sm mt-1">
+                  {dateRange[0].toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                  })}
+                </div>
+              </div>
+
+              <button
+                onClick={goToNextDays}
+                className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                Next {numDays} day{numDays > 1 ? "s" : ""}
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Day Grid */}
+            <div
+              className={`grid gap-6 ${
+                numDays === 1
+                  ? "grid-cols-1"
+                  : numDays <= 3
+                    ? "grid-cols-1 xl:grid-cols-3"
+                    : numDays <= 5
+                      ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
+                      : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
+              }`}
+            >
+              {dateRange.map((date, index) => {
+                const dateStr = formatDateForAPI(date);
+                const dayItems = itemsByDate[dateStr] || [];
+                const isToday =
+                  date.toDateString() === new Date().toDateString();
+                const completedCount = dayItems.filter(
+                  (item) => item.completed
+                ).length;
+                const totalCount = dayItems.length;
+
+                return (
+                  <div
+                    key={dateStr}
+                    id={dateStr}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      //   e.stopPropagation();
+                      handleDragOver(dateStr, e);
+                    }}
+                    onDragEnter={(e) => {
+                      e.stopPropagation();
+                      handleDragEnter(dateStr);
+                    }}
+                    onDragLeave={(e) => {
+                      e.stopPropagation();
+                      handleDragLeave(dateStr);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log(
+                        "Day container drop event triggered for:",
+                        dateStr
+                      );
+                      console.log("Current draggedItemId:", draggedItemId);
+
+                      if (draggedItemId) {
+                        // Directly assign the item to the date instead of using handleDragEnd
+                        const draggedItem = toDoItems?.find(
+                          (item) => item._id === draggedItemId
+                        );
+                        console.log("Found dragged item:", draggedItem);
+
+                        if (draggedItem) {
+                          console.log("Assigning item to date:", dateStr);
+                          assignItemToDate({
+                            id: draggedItem._id as Id<"toDoItems">,
+                            date: dateStr,
+                          })
+                            .then(() => {
+                              console.log("Successfully assigned item to date");
+                              // Reset drag state
+                              setDraggedItemId(null);
+                              setDraggedOverItemId(null);
+                            })
+                            .catch((error) => {
+                              console.error(
+                                "Failed to assign item to date:",
+                                error
+                              );
+                              // Reset drag state even on error
+                              setDraggedItemId(null);
+                              setDraggedOverItemId(null);
+                            });
+                        } else {
+                          // Reset drag state if no item found
+                          setDraggedItemId(null);
+                          setDraggedOverItemId(null);
+                        }
+                      }
+                    }}
+                    className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
+                      isToday
+                        ? "border-blue-500 shadow-blue-500/20"
+                        : draggedOverItemId === dateStr
+                          ? "border-green-500 bg-green-500/10 shadow-green-500/20"
+                          : "border-slate-700/50 hover:border-slate-600"
+                    }`}
+                  >
+                    {/* Day Header */}
+                    <div className="p-6 pb-4 border-b border-slate-700/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={`text-xl font-bold ${
+                            isToday ? "text-blue-400" : "text-white"
+                          }`}
+                        >
+                          {formatDateForDisplay(date)}
+                        </div>
+                        {isToday && (
+                          <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                            Today
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="text-slate-400 text-sm">
+                          {getDayOfWeek(date)} • {date.getDate()}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          {totalCount > 0 && (
+                            <>
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="text-green-400 font-medium">
+                                  {completedCount}
+                                </span>
+                              </div>
+                              <div className="text-slate-500">/</div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
+                                <span className="text-slate-400 font-medium">
+                                  {totalCount}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tasks for this day */}
+                    <div className="p-6 pt-4">
+                      <div className="space-y-3 mb-4">
+                        {dayItems.length > 0 ? (
+                          dayItems.map((item) => (
+                            <div
+                              key={dateStr + item._id}
+                              className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
+                                item.completed
+                                  ? "border-green-500/30 bg-green-500/5"
+                                  : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
+                              }`}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                handleDragOver(dateStr + item._id, e);
+                              }}
+                              onDragEnter={(e) => {
+                                e.stopPropagation();
+                              }}
+                              onDragLeave={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <div className="flex items-start gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={item.completed}
+                                  readOnly
+                                  className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div
+                                    className={`text-sm font-medium ${
+                                      item.completed
+                                        ? "line-through text-slate-400"
+                                        : "text-white"
+                                    }`}
+                                  >
+                                    {item.text}
+                                  </div>
+                                  {item.type && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <div
+                                        className={`w-2 h-2 rounded-full ${
+                                          item.type === "project"
+                                            ? "bg-purple-500"
+                                            : item.type === "task"
+                                              ? "bg-blue-500"
+                                              : "bg-yellow-500"
+                                        }`}
+                                      ></div>
+                                      <span className="text-xs text-slate-400 capitalize">
+                                        {item.type}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-12">
+                            <div className="text-4xl mb-3 opacity-50">📅</div>
+                            <div className="text-slate-500 text-sm">
+                              No tasks scheduled
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add task button */}
+                      <button className="w-full text-slate-400 hover:text-white text-sm py-3 border-2 border-dashed border-slate-600 rounded-lg hover:border-slate-500 hover:bg-slate-700/30 transition-all duration-200 flex items-center justify-center gap-2">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m8-8H4"
+                          />
+                        </svg>
+                        Add task for {formatDateForDisplay(date)}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Loading state */}
+            {items === undefined && (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-700 rounded-full mb-4">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <div className="text-slate-400">Loading tasks...</div>
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* Empty State */}
-      {(!toDoItems || toDoItems.length === 0) && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📝</div>
-          <h3 className="text-xl font-semibold text-white mb-2">
-            No tasks yet
-          </h3>
-          <p className="text-slate-400">
-            Add your first task above to get started!
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -218,3 +218,97 @@ export const deleteProject = mutation({
     return { deletedOrder, updatedCount: itemsToUpdate.length };
   },
 });
+
+export const getItemsByDateRange = query({
+  args: {
+    startDate: v.string(), // ISO date string (YYYY-MM-DD)
+    endDate: v.string(), // ISO date string (YYYY-MM-DD)
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    const items = await ctx.db
+      .query("toDoItems")
+      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("assignedDate"), undefined),
+          q.gte(q.field("assignedDate"), args.startDate),
+          q.lte(q.field("assignedDate"), args.endDate)
+        )
+      )
+      .collect();
+
+    return items;
+  },
+});
+
+export const getItemsByDate = query({
+  args: {
+    date: v.string(), // ISO date string (YYYY-MM-DD)
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    const items = await ctx.db
+      .query("toDoItems")
+      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+      .filter((q) => q.eq(q.field("assignedDate"), args.date))
+      .collect();
+
+    return items;
+  },
+});
+
+export const assignItemToDate = mutation({
+  args: {
+    id: v.id("toDoItems"),
+    date: v.string(), // ISO date string (YYYY-MM-DD)
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.id);
+    if (item === null) {
+      throw new Error("To-do item not found");
+    }
+    if (item.userId !== userId._id) {
+      throw new Error("To-do item does not belong to user");
+    }
+
+    return await ctx.db.patch(args.id, { assignedDate: args.date });
+  },
+});

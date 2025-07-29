@@ -1,4 +1,4 @@
-import { Id } from "../../convex/_generated/dataModel";
+import { Id } from "../../../../convex/_generated/dataModel";
 
 export const TaskCard = ({
   _id,
@@ -14,6 +14,8 @@ export const TaskCard = ({
   draggedOverItemId,
   mainOrder,
   setAdditionParentId,
+  draggedItemId,
+  setDraggedItemId,
 }: {
   _id: string;
   text: string;
@@ -28,6 +30,8 @@ export const TaskCard = ({
   draggedOverItemId?: string | null;
   mainOrder: number;
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
+  draggedItemId: string | null;
+  setDraggedItemId: (id: string | null) => void;
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
   const isDraggedOver = draggedOverItemId === _id;
@@ -37,6 +41,7 @@ export const TaskCard = ({
       draggable={true}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", _id);
+        console.log("onDragStart in taskCard.tsx", _id);
         onDragStart?.(_id);
       }}
       onDragEnd={() => {
