@@ -1,23 +1,8 @@
-import { Id } from "../../convex/_generated/dataModel";
-import { ProjectCard } from "./projectCard";
 import { TaskCard } from "./taskCard";
+import { ProjectCard } from "./projectCard";
+import { Id } from "../../convex/_generated/dataModel";
 
-export const ItemCard = ({
-  _id,
-  text,
-  completed,
-  toggleComplete,
-  deleteItem,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDragEnter,
-  onDragLeave,
-  draggedOverItemId,
-  mainOrder,
-  type,
-  setAdditionParentId,
-}: {
+interface ItemCardProps {
   _id: string;
   text: string;
   completed: boolean;
@@ -31,42 +16,13 @@ export const ItemCard = ({
   draggedOverItemId?: string | null;
   mainOrder: number;
   type: "task" | "project" | "folder";
-  setAdditionParentId: (id: Id<"toDoItems">) => void;
-}) => {
-  if (type === "project") {
-    return (
-      <ProjectCard
-        _id={_id}
-        text={text}
-        completed={completed}
-        toggleComplete={toggleComplete}
-        deleteItem={deleteItem}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onDragOver={onDragOver}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        draggedOverItemId={draggedOverItemId}
-        mainOrder={mainOrder}
-        setAdditionParentId={setAdditionParentId}
-      />
-    );
-  } else if (type === "task") {
-    return (
-      <TaskCard
-        _id={_id}
-        text={text}
-        completed={completed}
-        toggleComplete={toggleComplete}
-        deleteItem={deleteItem}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onDragOver={onDragOver}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        draggedOverItemId={draggedOverItemId}
-        mainOrder={mainOrder}
-      />
-    );
+  setAdditionParentId: (id: Id<"toDoItems"> | null) => void;
+}
+
+export const ItemCard = ({ type, ...props }: ItemCardProps) => {
+  if (type === "project" || type === "folder") {
+    return <ProjectCard {...props} />;
   }
+
+  return <TaskCard {...props} />;
 };

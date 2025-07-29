@@ -51,13 +51,14 @@ export const create = mutation({
         throw new Error("Parent item not found");
       }
     }
-
+    console.log("Order:", args.order);
     return await ctx.db.insert("toDoItems", {
       text: args.text,
       completed: false,
       mainOrder: args.order,
       userId: userId._id,
       type: args.type,
+      parentId: args.parentId,
     });
   },
 });

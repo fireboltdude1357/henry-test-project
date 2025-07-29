@@ -1,3 +1,5 @@
+import { Id } from "../../convex/_generated/dataModel";
+
 export const TaskCard = ({
   _id,
   text,
@@ -11,6 +13,7 @@ export const TaskCard = ({
   onDragLeave,
   draggedOverItemId,
   mainOrder,
+  setAdditionParentId,
 }: {
   _id: string;
   text: string;
@@ -24,6 +27,7 @@ export const TaskCard = ({
   onDragLeave?: (id: string) => void;
   draggedOverItemId?: string | null;
   mainOrder: number;
+  setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
   const isDraggedOver = draggedOverItemId === _id;

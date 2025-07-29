@@ -31,10 +31,12 @@ export const ProjectCard = ({
   onDragLeave?: (id: string) => void;
   draggedOverItemId?: string | null;
   mainOrder: number;
-  setAdditionParentId: (id: Id<"toDoItems">) => void;
+  setAdditionParentId: (id: Id<"toDoItems"> | null) => void;
 }) => {
   const isDraggedOver = draggedOverItemId === _id;
   const updateOrder = useMutation(api.toDoItems.updateOrder);
+  const deleteChildItem = useMutation(api.toDoItems.deleteItem);
+  const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
 
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
@@ -51,12 +53,13 @@ export const ProjectCard = ({
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
     // Only log if it's a different item than the one being dragged
-    if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
-      const draggedOverItem = children?.find((item) => item._id === id);
-      if (!draggedOverItem?.parentId) {
-        setChildDraggedOverItemId(id);
-        console.log("Dragging over item:", id);
-      }
+    if (
+      draggedItemId &&
+      draggedItemId !== id &&
+      childDraggedOverItemId !== id
+    ) {
+      setChildDraggedOverItemId(id);
+      console.log("Dragging over item:", id);
     }
   };
   const handleDragEnd = async (id: string) => {
@@ -72,16 +75,15 @@ export const ProjectCard = ({
       console.log("Dragged over item:", draggedOverItem);
       if (
         draggedItem &&
-        (draggedOverItem || childDraggedOverItemId === "bottom")
+        (draggedOverItem || childDraggedOverItemId === "child-bottom")
       ) {
         console.log("Dragged item and dragged over item CP");
         let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
-        const maxMainOrder = children?.length || 0;
+        const maxMainOrder = (children?.length || 0) + 1;
 
         const movingItemOldOrder = draggedItem?.mainOrder || movingItemNewOrder;
-        if (childDraggedOverItemId === "bottom") {
+        if (childDraggedOverItemId === "child-bottom") {
           movingItemNewOrder = maxMainOrder;
-          // movingItemOldOrder = maxMainOrder;
         }
         const difference = movingItemNewOrder - movingItemOldOrder;
         console.log("Difference:", difference);
@@ -131,18 +133,30 @@ export const ProjectCard = ({
 
   const handleDragEnter = (id: string) => {
     // Only log if it's a different item than the one being dragged
-    if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
+    if (
+      draggedItemId &&
+      draggedItemId !== id &&
+      childDraggedOverItemId !== id
+    ) {
       console.log("Entered item:", id);
     }
   };
 
   const handleDragLeave = (id: string) => {
     // Only log if it's a different item than the one being dragged
-    if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
+    if (
+      draggedItemId &&
+      draggedItemId !== id &&
+      childDraggedOverItemId !== id
+    ) {
       console.log("Left item:", id);
     }
   };
   console.log("children", children);
+  const handleDelete = () => {
+    deleteItem(_id);
+    setAdditionParentId(null);
+  };
   return (
     <div
       key={_id}
@@ -212,7 +226,7 @@ export const ProjectCard = ({
         </button>
         <span className="text-purple-400 text-xs">({mainOrder})</span>
         <button
-          onClick={() => deleteItem(_id)}
+          onClick={handleDelete}
           className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
           title="Delete project"
         >
@@ -232,16 +246,19 @@ export const ProjectCard = ({
         </button>
       </div>
       {children && children.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
           {children.map((child) => (
-            // <div key={child._id}>{child.text}</div>
             <ItemCard
               key={child._id}
               _id={child._id}
               text={child.text}
               completed={child.completed}
-              toggleComplete={() => toggleComplete(child._id)}
-              deleteItem={() => deleteItem(child._id)}
+              toggleComplete={() =>
+                toggleChildComplete({ id: child._id as Id<"toDoItems"> })
+              }
+              deleteItem={() =>
+                deleteChildItem({ id: child._id as Id<"toDoItems"> })
+              }
               onDragStart={() => handleDragStart(child._id)}
               onDragEnd={() => handleDragEnd(child._id)}
               onDragOver={(id, e) => handleDragOver(id, e)}
@@ -253,6 +270,21 @@ export const ProjectCard = ({
               type={child.type || "task"}
             />
           ))}
+          {/* Bottom drop zone for child items */}
+          <div
+            id="child-bottom"
+            onDragOver={(e) => {
+              e.preventDefault();
+              handleDragOver("child-bottom", e);
+            }}
+            onDragEnter={() => handleDragEnter("child-bottom")}
+            onDragLeave={() => handleDragLeave("child-bottom")}
+            className="h-6 w-full relative"
+          >
+            {childDraggedOverItemId === "child-bottom" && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
+            )}
+          </div>
         </div>
       )}
       {isDraggedOver && (
