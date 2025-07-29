@@ -251,13 +251,15 @@ export default function CalendarScreen() {
               );
               // If dragging to a specific item on a different date, position it relative to that item
               if (draggedOverItem.assignedDate && draggedOverItem.dayOrder) {
+                // Insert AFTER the target item (target position + 1)
+                const targetPosition = draggedOverItem.dayOrder + 1;
                 console.log(
-                  `Assigning item to position ${draggedOverItem.dayOrder} on ${draggedOverItem.assignedDate}`
+                  `Assigning item to position ${targetPosition} (after item at ${draggedOverItem.dayOrder}) on ${draggedOverItem.assignedDate}`
                 );
                 await assignItemToDateAtPosition({
                   id: draggedItem._id as Id<"toDoItems">,
                   date: draggedOverItem.assignedDate,
-                  targetDayOrder: draggedOverItem.dayOrder, // Insert at the target item's position
+                  targetDayOrder: targetPosition, // Insert after the target item
                 });
               } else if (draggedOverItem.assignedDate) {
                 // Fallback to basic assignment if no specific position
@@ -381,6 +383,10 @@ export default function CalendarScreen() {
           return;
         }
         console.log("Dragging over day:", id, "isDateContainer");
+      } else if (id === "bottom") {
+        console.log("BOTTOM DETECTED in calendar.tsx on line 385 =========");
+        setDraggedOverItemId(id);
+        return;
       } else {
         // Handle dragging over todo items - removed parentId restriction
         const draggedOverItem = toDoItems?.find((item) => item._id === id);
@@ -714,11 +720,26 @@ export default function CalendarScreen() {
                             .map((item) => (
                               <div
                                 key={dateStr + item._id}
-                                className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 relative ${
+                                draggable={true}
+                                className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 relative cursor-move ${
                                   item.completed
                                     ? "border-green-500/30 bg-green-500/5"
                                     : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
                                 }`}
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData(
+                                    "text/plain",
+                                    item._id
+                                  );
+                                  console.log(
+                                    "onDragStart in calendar day:",
+                                    item._id
+                                  );
+                                  handleDragStart(item._id);
+                                }}
+                                onDragEnd={() => {
+                                  handleDragEnd(item._id);
+                                }}
                                 onDragOver={(e) => {
                                   e.preventDefault();
                                   handleDragOver(dateStr + item._id, e);
