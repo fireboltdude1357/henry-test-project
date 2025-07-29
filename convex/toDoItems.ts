@@ -339,7 +339,7 @@ export const assignItemToDateAtPosition = mutation({
       otherItemsForDate.map((item) => ({
         id: item._id,
         text: item.text,
-        dayOrder: item.dayOrder,
+        dayOrder: item.dayOrder || 0,
       }))
     );
 
