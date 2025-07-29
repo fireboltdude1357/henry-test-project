@@ -14,7 +14,11 @@ export default function CalendarScreen() {
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
+  const updateDayOrder = useMutation(api.toDoItems.updateDayOrder);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
+  const assignItemToDateAtPosition = useMutation(
+    api.toDoItems.assignItemToDateAtPosition
+  );
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
     null
@@ -116,10 +120,22 @@ export default function CalendarScreen() {
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
 
-      console.log("Drag end - draggedItemId:", draggedItemId);
-      console.log("Drag end - draggedOverItemId:", draggedOverItemId);
-      console.log("Drag end - isDateContainer:", isDateContainer);
-      console.log("Drag end - draggedItem:", draggedItem);
+      console.log(
+        "Drag end - draggedItemId in calendar.tsx on line 120:",
+        draggedItemId
+      );
+      console.log(
+        "Drag end - draggedOverItemId in calendar.tsx on line 121:",
+        draggedOverItemId
+      );
+      console.log(
+        "Drag end - isDateContainer in calendar.tsx on line 122:",
+        isDateContainer
+      );
+      console.log(
+        "Drag end - draggedItem in calendar.tsx on line 123:",
+        draggedItem
+      );
 
       if (isDateContainer && draggedItem) {
         // Handle dropping on a day container - assign item to that date
@@ -136,54 +152,186 @@ export default function CalendarScreen() {
       } else if (draggedOverItemId !== "bottom") {
         // Handle dropping on other todo items (existing reordering logic)
         // Only do reordering if we're not dropping on a date container
+
+        // Extract item ID if it's a date item (date + Convex ID format)
+        let itemIdToFind = draggedOverItemId;
+        const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(
+          draggedOverItemId
+        );
+        if (isDateItem) {
+          itemIdToFind = draggedOverItemId.substring(10); // Remove date part (YYYY-MM-DD)
+          console.log("Date item detected, extracting ID:", itemIdToFind);
+        }
+
         const draggedOverItem = toDoItems?.find(
-          (item) => item._id === draggedOverItemId
+          (item) => item._id === itemIdToFind
         );
         console.log("Dragged item:", draggedItem);
         console.log("Dragged over item:", draggedOverItem);
-        console.log("Dragged over item id:", draggedOverItemId);
+        console.log("Dragged over item id (original):", draggedOverItemId);
+        console.log("Dragged over item id (extracted):", itemIdToFind);
 
-        if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
-          console.log("Reordering items");
-          let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+        // Check if we're dropping in a calendar day context
+        const isDropInCalendarDay =
+          draggedOverItemId &&
+          (/^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId) || // Date container
+            /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(draggedOverItemId) || // Date item
+            /^\d{4}-\d{2}-\d{2}-bottom$/.test(draggedOverItemId)); // Bottom zone
 
-          const movingItemOldOrder =
-            draggedItem?.mainOrder || movingItemNewOrder;
+        console.log("Drop context - isDropInCalendarDay:", isDropInCalendarDay);
+        console.log("Drop context - draggedOverItemId:", draggedOverItemId);
 
-          const difference = movingItemNewOrder - movingItemOldOrder;
-          console.log("Difference:", difference);
+        if (draggedItem && draggedOverItem) {
+          if (isDropInCalendarDay) {
+            // CALENDAR DAY CONTEXT: Use dayOrder logic
+            console.log("Using calendar day reordering logic");
 
-          let interval = 0;
-          if (difference > 0) {
-            interval = 1;
-            movingItemNewOrder = movingItemNewOrder - 1;
+            // Check if both items are assigned to the same date for dayOrder reordering
+            if (
+              draggedItem.assignedDate &&
+              draggedOverItem.assignedDate &&
+              draggedItem.assignedDate === draggedOverItem.assignedDate
+            ) {
+              console.log("Reordering items within same day");
+
+              let movingItemNewOrder = draggedOverItem?.dayOrder || 0;
+              const movingItemOldOrder =
+                draggedItem?.dayOrder || movingItemNewOrder;
+
+              const difference = movingItemNewOrder - movingItemOldOrder;
+              console.log("Day order difference:", difference);
+
+              let interval = 0;
+              if (difference > 0) {
+                interval = 1;
+                movingItemNewOrder = movingItemNewOrder - 1;
+              } else {
+                interval = -1;
+              }
+
+              console.log("Moving item new dayOrder:", movingItemNewOrder);
+              console.log("Moving item old dayOrder:", movingItemOldOrder);
+
+              // Get all items for this date to reorder them
+              const sameDate = draggedItem.assignedDate;
+              const itemsOnSameDate =
+                toDoItems?.filter(
+                  (item) =>
+                    item.assignedDate === sameDate &&
+                    item.dayOrder !== undefined &&
+                    item.dayOrder !== null
+                ) || [];
+
+              // Reorder items between old and new positions
+              for (
+                let i = movingItemOldOrder + interval;
+                i !== movingItemNewOrder + interval;
+                i += interval
+              ) {
+                console.log("Updating dayOrder for item with order:", i);
+                const item = itemsOnSameDate.find(
+                  (item) => item.dayOrder === i
+                );
+                if (item) {
+                  updateDayOrder({
+                    id: item._id as Id<"toDoItems">,
+                    dayOrder: (item.dayOrder || 0) - interval,
+                  });
+                }
+              }
+
+              // Update the dragged item's dayOrder
+              updateDayOrder({
+                id: draggedItemId as Id<"toDoItems">,
+                dayOrder: movingItemNewOrder,
+              });
+            } else {
+              console.log(
+                "Items not on same date, checking for positional assignment"
+              );
+              // If dragging to a specific item on a different date, position it relative to that item
+              if (draggedOverItem.assignedDate && draggedOverItem.dayOrder) {
+                console.log(
+                  `Assigning item to position ${draggedOverItem.dayOrder} on ${draggedOverItem.assignedDate}`
+                );
+                await assignItemToDateAtPosition({
+                  id: draggedItem._id as Id<"toDoItems">,
+                  date: draggedOverItem.assignedDate,
+                  targetDayOrder: draggedOverItem.dayOrder, // Insert at the target item's position
+                });
+              } else if (draggedOverItem.assignedDate) {
+                // Fallback to basic assignment if no specific position
+                console.log("Using basic assignment as fallback");
+                await assignItemToDate({
+                  id: draggedItem._id as Id<"toDoItems">,
+                  date: draggedOverItem.assignedDate,
+                });
+              }
+            }
           } else {
-            interval = -1;
-          }
+            // SIDEBAR CONTEXT: Use mainOrder logic (like home page)
+            console.log("Using sidebar mainOrder reordering logic");
 
-          console.log("Moving item new order:", movingItemNewOrder);
-          console.log("Moving item old order:", movingItemOldOrder);
-          for (
-            let i = movingItemOldOrder + interval;
-            i !== movingItemNewOrder + interval;
-            i += interval
-          ) {
-            console.log("Updating order for item:", i);
-            const item = toDoItems?.find((item) => item.mainOrder === i);
-            if (item) {
+            if (!draggedOverItem.parentId) {
+              let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+              const movingItemOldOrder =
+                draggedItem?.mainOrder || movingItemNewOrder;
+
+              const difference = movingItemNewOrder - movingItemOldOrder;
+              console.log("Main order difference:", difference);
+
+              let interval = 0;
+              if (difference > 0) {
+                interval = 1;
+                movingItemNewOrder = movingItemNewOrder - 1;
+              } else {
+                interval = -1;
+              }
+
+              console.log("Moving item new mainOrder:", movingItemNewOrder);
+              console.log("Moving item old mainOrder:", movingItemOldOrder);
+
+              // Reorder items between old and new positions using mainOrder
+              for (
+                let i = movingItemOldOrder + interval;
+                i !== movingItemNewOrder + interval;
+                i += interval
+              ) {
+                console.log("Updating mainOrder for item with order:", i);
+                const item = toDoItems?.find((item) => item.mainOrder === i);
+                if (item) {
+                  updateOrder({
+                    id: item._id as Id<"toDoItems">,
+                    order: (item.mainOrder || 0) - interval,
+                  });
+                }
+              }
+
+              // Update the dragged item's mainOrder
               updateOrder({
-                id: item._id as Id<"toDoItems">,
-                order: item.mainOrder - interval,
+                id: draggedItemId as Id<"toDoItems">,
+                order: movingItemNewOrder,
               });
             }
           }
-          updateOrder({
-            id: draggedItemId as Id<"toDoItems">,
-            order: movingItemNewOrder,
+        }
+      } else if (draggedOverItemId?.includes("-bottom") && draggedItem) {
+        // Handle dropping at bottom of a specific day
+        const dateStr = draggedOverItemId.replace("-bottom", "");
+        console.log("Dropping at bottom of day:", dateStr);
+
+        // Assign item to this date
+        try {
+          await assignItemToDate({
+            id: draggedItem._id as Id<"toDoItems">,
+            date: dateStr,
           });
+          console.log("Successfully assigned item to bottom of date");
+        } catch (error) {
+          console.error("Failed to assign item to bottom of date:", error);
         }
       } else if (draggedOverItemId === "bottom" && draggedItem) {
-        // Handle dropping at bottom
+        // Handle dropping at bottom (main list)
         console.log("Dropping at bottom");
         updateOrder({
           id: draggedItemId as Id<"toDoItems">,
@@ -191,41 +339,48 @@ export default function CalendarScreen() {
         });
       }
     }
+    console.log("draggedItemId", draggedItemId);
+    console.log("draggedOverItemId", draggedOverItemId);
     setDraggedItemId(null);
     setDraggedOverItemId(null);
     console.log("Finished dragging item in calendar.tsx on line 196:", id);
   };
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
+    const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
+
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
-      console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
+      //   console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
       // Only log if it's a different item than the one being dragged
       // console.log("Dragging over item:", id);
-      console.log("draggedItemId", draggedItemId);
-      console.log("id", id);
-      console.log("draggedOverItemId", draggedOverItemId);
+      //   console.log("draggedItemId", draggedItemId);
+      //   console.log("id", id);
+      //   console.log("draggedOverItemId", draggedOverItemId);
       // Check if it's a day container (date string format YYYY-MM-DD)
-      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
       // Check if it's a date item (date string followed by Convex ID)
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(id);
-      console.log("isDateContainer", isDateContainer);
-      console.log("isDateItem", isDateItem);
+      //   console.log("isDateContainer", isDateContainer);
+      //   console.log("isDateItem", isDateItem);
       if (isDateItem) {
         const dateStr = id.substring(0, 10);
         const itemId = id.substring(10);
         console.log("dateStr", dateStr);
         console.log("itemId", itemId);
       }
-
-      if (isDateContainer) {
-        // Allow dragging over day containers (works for all items, including nested ones)
-        setDraggedOverItemId(id);
-        console.log("Dragging over day:", id);
-      } else if (isDateItem) {
+      if (isDateItem) {
         // Extract the date part from the date item ID (first 10 characters: YYYY-MM-DD)
-        const dateStr = id.substring(0, 10);
-        setDraggedOverItemId(dateStr);
-        console.log("Dragging over date item, treating as day:", dateStr);
+        setDraggedOverItemId(id);
+        // setDraggedOverItemId(dateStr);
+        console.log("Dragging over date item", id);
+      } else if (isDateContainer) {
+        // Allow dragging over day containers (works for all items, including nested ones)
+        const draggedOverIdDateItemBool = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(
+          draggedOverItemId || ""
+        );
+        if (draggedOverIdDateItemBool) {
+          return;
+        }
+        console.log("Dragging over day:", id, "isDateContainer");
       } else {
         // Handle dragging over todo items - removed parentId restriction
         const draggedOverItem = toDoItems?.find((item) => item._id === id);
@@ -393,14 +548,14 @@ export default function CalendarScreen() {
               {dateRange.map((date, index) => {
                 const dateStr = formatDateForAPI(date);
                 const dayItems = itemsByDate[dateStr] || [];
-                console.log(
-                  `Day ${dateStr} items:`,
-                  dayItems.map((item) => ({
-                    text: item.text,
-                    dayOrder: item.dayOrder,
-                    assignedDate: item.assignedDate,
-                  }))
-                );
+                // console.log(
+                //   `Day ${dateStr} items:`,
+                //   dayItems.map((item) => ({
+                //     text: item.text,
+                //     dayOrder: item.dayOrder,
+                //     assignedDate: item.assignedDate,
+                //   }))
+                // );
                 const isToday =
                   date.toDateString() === new Date().toDateString();
                 const completedCount = dayItems.filter(
@@ -433,46 +588,64 @@ export default function CalendarScreen() {
                         dateStr
                       );
                       console.log("Current draggedItemId:", draggedItemId);
+                      console.log(
+                        "Current draggedOverItemId:",
+                        draggedOverItemId
+                      );
 
                       if (draggedItemId) {
-                        // Directly assign the item to the date instead of using handleDragEnd
-                        const draggedItem = toDoItems?.find(
-                          (item) => item._id === draggedItemId
+                        // Check if we were dragging over a specific item in this day
+                        const wasOverDateItem = draggedOverItemId?.startsWith(
+                          dateStr + "j"
                         );
-                        console.log("Found dragged item:", draggedItem);
+                        const wasOverBottomZone =
+                          draggedOverItemId === `${dateStr}-bottom`;
 
-                        if (draggedItem) {
-                          console.log("Assigning item to date:", dateStr);
+                        console.log("wasOverDateItem:", wasOverDateItem);
+                        console.log("wasOverBottomZone:", wasOverBottomZone);
+
+                        if (wasOverDateItem || wasOverBottomZone) {
+                          // Let handleDragEnd handle the positioning logic
                           console.log(
-                            "Dragged item before assignment:",
-                            draggedItem
+                            "Delegating to handleDragEnd for precise positioning"
                           );
-                          assignItemToDate({
-                            id: draggedItem._id as Id<"toDoItems">,
-                            date: dateStr,
-                          })
-                            .then((result) => {
-                              console.log(
-                                "Successfully assigned item to date, result:",
-                                result
-                              );
-                              // Reset drag state
-                              setDraggedItemId(null);
-                              setDraggedOverItemId(null);
-                            })
-                            .catch((error) => {
-                              console.error(
-                                "Failed to assign item to date:",
-                                error
-                              );
-                              // Reset drag state even on error
-                              setDraggedItemId(null);
-                              setDraggedOverItemId(null);
-                            });
+                          handleDragEnd(draggedItemId);
                         } else {
-                          // Reset drag state if no item found
-                          setDraggedItemId(null);
-                          setDraggedOverItemId(null);
+                          // Only use basic assignment if we weren't over any specific drop zone
+                          const draggedItem = toDoItems?.find(
+                            (item) => item._id === draggedItemId
+                          );
+                          console.log("Found dragged item:", draggedItem);
+
+                          if (draggedItem) {
+                            console.log("Assigning item to date:", dateStr);
+                            assignItemToDate({
+                              id: draggedItem._id as Id<"toDoItems">,
+                              date: dateStr,
+                            })
+                              .then((result) => {
+                                console.log(
+                                  "Successfully assigned item to date, result:",
+                                  result
+                                );
+                                // Reset drag state
+                                setDraggedItemId(null);
+                                setDraggedOverItemId(null);
+                              })
+                              .catch((error) => {
+                                console.error(
+                                  "Failed to assign item to date:",
+                                  error
+                                );
+                                // Reset drag state even on error
+                                setDraggedItemId(null);
+                                setDraggedOverItemId(null);
+                              });
+                          } else {
+                            // Reset drag state if no item found
+                            setDraggedItemId(null);
+                            setDraggedOverItemId(null);
+                          }
                         }
                       }
                     }}
@@ -533,15 +706,15 @@ export default function CalendarScreen() {
                         {dayItems.length > 0 ? (
                           dayItems
                             .sort((a, b) => {
-                              console.log(
-                                `Sorting: ${a.text} (dayOrder: ${a.dayOrder}) vs ${b.text} (dayOrder: ${b.dayOrder})`
-                              );
+                              // console.log(
+                              //   `Sorting: ${a.text} (dayOrder: ${a.dayOrder}) vs ${b.text} (dayOrder: ${b.dayOrder})`
+                              // );
                               return (a.dayOrder || 0) - (b.dayOrder || 0);
                             })
                             .map((item) => (
                               <div
                                 key={dateStr + item._id}
-                                className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
+                                className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 relative ${
                                   item.completed
                                     ? "border-green-500/30 bg-green-500/5"
                                     : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
@@ -552,11 +725,30 @@ export default function CalendarScreen() {
                                 }}
                                 onDragEnter={(e) => {
                                   e.stopPropagation();
+                                  handleDragEnter(dateStr + item._id);
                                 }}
                                 onDragLeave={(e) => {
                                   e.stopPropagation();
+                                  handleDragLeave(dateStr + item._id);
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log(
+                                    "Item drop triggered for:",
+                                    dateStr + item._id
+                                  );
+                                  if (draggedItemId) {
+                                    handleDragEnd(draggedItemId);
+                                  }
                                 }}
                               >
+                                {/* Visual feedback for drag and drop */}
+                                {draggedOverItemId === dateStr + item._id &&
+                                  draggedItemId &&
+                                  draggedItemId !== item._id && (
+                                    <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full z-10"></div>
+                                  )}
                                 <div className="flex items-start gap-3">
                                   <input
                                     type="checkbox"
@@ -603,6 +795,42 @@ export default function CalendarScreen() {
                             <div className="text-slate-500 text-sm">
                               No tasks scheduled
                             </div>
+                          </div>
+                        )}
+
+                        {/* Bottom drop zone for each day */}
+                        {dayItems.length > 0 && (
+                          <div
+                            id={`${dateStr}-bottom`}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              handleDragOver(`${dateStr}-bottom`, e);
+                            }}
+                            onDragEnter={(e) => {
+                              e.stopPropagation();
+                              handleDragEnter(`${dateStr}-bottom`);
+                            }}
+                            onDragLeave={(e) => {
+                              e.stopPropagation();
+                              handleDragLeave(`${dateStr}-bottom`);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log(
+                                "Bottom zone drop triggered for:",
+                                `${dateStr}-bottom`
+                              );
+                              if (draggedItemId) {
+                                handleDragEnd(draggedItemId);
+                              }
+                            }}
+                            className="h-4 w-full relative mt-2"
+                          >
+                            {draggedOverItemId === `${dateStr}-bottom` &&
+                              draggedItemId && (
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
+                              )}
                           </div>
                         )}
                       </div>

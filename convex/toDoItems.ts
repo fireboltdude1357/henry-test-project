@@ -72,6 +72,16 @@ export const updateOrder = mutation({
   },
 });
 
+export const updateDayOrder = mutation({
+  args: {
+    id: v.id("toDoItems"),
+    dayOrder: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.id, { dayOrder: args.dayOrder });
+  },
+});
+
 export const toggleComplete = mutation({
   args: {
     id: v.id("toDoItems"),
@@ -279,6 +289,114 @@ export const getItemsByDate = query({
       .collect();
 
     return items;
+  },
+});
+
+export const assignItemToDateAtPosition = mutation({
+  args: {
+    id: v.id("toDoItems"),
+    date: v.string(), // ISO date string (YYYY-MM-DD)
+    targetDayOrder: v.number(), // Position to insert at
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.id);
+    if (item === null) {
+      throw new Error("To-do item not found");
+    }
+    if (item.userId !== userId._id) {
+      throw new Error("To-do item does not belong to user");
+    }
+
+    // Get all items for the target date
+    const existingItemsForDate = await ctx.db
+      .query("toDoItems")
+      .withIndex("by_user_assigned_date", (q) =>
+        q.eq("userId", userId._id).eq("assignedDate", args.date)
+      )
+      .collect();
+
+    // Exclude the item being assigned (in case it's already on this date)
+    const otherItemsForDate = existingItemsForDate.filter(
+      (item) => item._id !== args.id
+    );
+
+    console.log("Inserting item at position:", args.targetDayOrder);
+    console.log(
+      "Other items before insertion:",
+      otherItemsForDate.map((item) => ({
+        id: item._id,
+        text: item.text,
+        dayOrder: item.dayOrder,
+      }))
+    );
+
+    // Shift all items at or after the target position
+    for (const existingItem of otherItemsForDate) {
+      if (
+        existingItem.dayOrder &&
+        existingItem.dayOrder >= args.targetDayOrder
+      ) {
+        console.log(
+          `Shifting item "${existingItem.text}" from dayOrder ${existingItem.dayOrder} to ${existingItem.dayOrder + 1}`
+        );
+        await ctx.db.patch(existingItem._id, {
+          dayOrder: existingItem.dayOrder + 1,
+        });
+      }
+    }
+
+    // Store the previous assigned date for cleanup
+    const previousAssignedDate = item.assignedDate;
+
+    // Assign the item to the target position
+    const result = await ctx.db.patch(args.id, {
+      assignedDate: args.date,
+      dayOrder: args.targetDayOrder,
+    });
+
+    console.log(
+      `Assigned item "${item.text}" to dayOrder ${args.targetDayOrder} on ${args.date}`
+    );
+
+    // Clean up gaps in the previous date if item was moved from another date
+    if (previousAssignedDate && previousAssignedDate !== args.date) {
+      console.log("Cleaning up gaps in previous date:", previousAssignedDate);
+
+      const remainingItemsOnPreviousDate = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_assigned_date", (q) =>
+          q.eq("userId", userId._id).eq("assignedDate", previousAssignedDate)
+        )
+        .collect();
+
+      const sortedItems = remainingItemsOnPreviousDate
+        .filter((remainingItem) => remainingItem.dayOrder != null)
+        .sort((a, b) => (a.dayOrder || 0) - (b.dayOrder || 0));
+
+      for (let i = 0; i < sortedItems.length; i++) {
+        const newOrder = i + 1;
+        if (sortedItems[i].dayOrder !== newOrder) {
+          await ctx.db.patch(sortedItems[i]._id, {
+            dayOrder: newOrder,
+          });
+        }
+      }
+    }
+
+    return result;
   },
 });
 

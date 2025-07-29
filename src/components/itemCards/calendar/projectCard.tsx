@@ -58,27 +58,30 @@ export const ProjectCard = ({
   };
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
-    // Only log if it's a different item than the one being dragged
+    // Set local child drag state for project-internal reordering
     if (
       draggedItemId &&
       draggedItemId !== id &&
       childDraggedOverItemId !== id
     ) {
-      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
-      if (isDateContainer) {
+      const draggedOverChild = children?.find((item) => item._id === id);
+      if (draggedOverChild) {
         setChildDraggedOverItemId(id);
-        console.log("Dragging over date container:", id);
-      } else {
+        console.log("Setting childDraggedOverItemId to:", id);
+      } else if (id === "child-bottom") {
         setChildDraggedOverItemId(id);
-        console.log("Dragging over item:", id);
+        console.log("Setting childDraggedOverItemId to bottom zone:", id);
       }
     }
+
+    // Also forward to parent for calendar-level handling
+    onDragOver?.(id, e);
   };
   const handleDragEnd = async (id: string) => {
     console.log("================================================");
     console.log("childDraggedOverItemId", childDraggedOverItemId);
     if (childDraggedOverItemId) {
-      console.log("Finished dragging item:", id);
+      console.log("Finished dragging item in projectCard.tsx on line 67:", id);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(
         childDraggedOverItemId
       );
@@ -88,9 +91,15 @@ export const ProjectCard = ({
         (item) => item._id === childDraggedOverItemId
       );
       console.log("Dragged item:", draggedItem);
-      console.log("Dragged over item:", draggedOverItem);
+      console.log(
+        "Dragged over item in projectCard.tsx on line 78:",
+        draggedOverItem
+      );
       console.log("Dragged over item id:", childDraggedOverItemId);
-      console.log("Dragged over item:", draggedOverItem);
+      console.log(
+        "Dragged over item in projectCard.tsx on line 80:",
+        draggedOverItem
+      );
       if (
         draggedItem &&
         (draggedOverItem || childDraggedOverItemId === "child-bottom")
@@ -145,20 +154,29 @@ export const ProjectCard = ({
     }
     setDraggedItemId(null);
     setChildDraggedOverItemId(null);
-    console.log("Finished dragging item:", id);
+    console.log("Finished dragging item in projectCard.tsx on line 134:", id);
     // You can add any additional logic here when drag ends
   };
 
   const handleDragEnter = (id: string) => {
-    // Only log if it's a different item than the one being dragged
-
+    // Set local child drag state and forward to parent
     if (
       draggedItemId &&
       draggedItemId !== id &&
       childDraggedOverItemId !== id
     ) {
-      console.log("Entered item:", id);
+      const draggedOverChild = children?.find((item) => item._id === id);
+      if (draggedOverChild || id === "child-bottom") {
+        setChildDraggedOverItemId(id);
+        console.log(
+          "Entered child item, setting childDraggedOverItemId to:",
+          id
+        );
+      }
     }
+
+    // Forward to parent
+    onDragEnter?.(id);
   };
 
   const handleDragLeave = (id: string) => {
@@ -205,7 +223,12 @@ export const ProjectCard = ({
         onDragLeave={() => {
           onDragLeave?.(_id);
         }}
-        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDragEnd?.(_id);
+        }}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${
           completed
             ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
             : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
@@ -303,7 +326,7 @@ export const ProjectCard = ({
       </div>
 
       {isDraggedOver && (
-        <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-purple-500 rounded-full"></div>
+        <div className="absolute -top-1 left-0 right-0 h-1 bg-purple-500 rounded-full z-10"></div>
       )}
 
       {children && children.length > 0 && isExpanded && (
@@ -342,7 +365,12 @@ export const ProjectCard = ({
             }}
             onDragEnter={() => handleDragEnter("child-bottom")}
             onDragLeave={() => handleDragLeave("child-bottom")}
-            className="h-[1px] w-full relative"
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleDragEnd("child-bottom");
+            }}
+            className="h-4 w-full relative"
           >
             {childDraggedOverItemId === "child-bottom" && (
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>

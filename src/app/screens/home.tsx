@@ -35,8 +35,12 @@ export default function HomeScreen({
       );
       console.log("Dragged item:", draggedItem);
       console.log("Dragged over item:", draggedOverItem);
-      console.log("Dragged over item id:", draggedOverItemId);
-      console.log("Dragged over item:", draggedOverItem);
+      console.log(
+        "Dragged over item id in home.tsx on line 38:",
+        draggedOverItemId
+      );
+      console.log("Dragged over item in home.tsx on line 42:", draggedOverItem);
+      console.log("Dragged item id in home.tsx on line 38:", draggedItemId);
       if (draggedItem && (draggedOverItem || draggedOverItemId === "bottom")) {
         console.log("Dragged item and dragged over item CP");
         let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
