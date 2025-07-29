@@ -1,0 +1,220 @@
+import { TaskCard } from "@/components/taskCard";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useState } from "react";
+import { Id } from "../../../convex/_generated/dataModel";
+
+export default function CalendarScreen() {
+  const toDoItems = useQuery(api.toDoItems.get);
+  const createToDoItem = useMutation(api.toDoItems.create);
+  const toggleComplete = useMutation(api.toDoItems.toggleComplete);
+  const deleteItem = useMutation(api.toDoItems.deleteItem);
+  const updateOrder = useMutation(api.toDoItems.updateOrder);
+  const [text, setText] = useState("");
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
+    null
+  );
+
+  const handleAdd = () => {
+    if (text.trim()) {
+      createToDoItem({ text: text.trim(), order: maxMainOrder });
+      setText("");
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleAdd();
+    }
+  };
+
+  const handleDragStart = (id: string) => {
+    setDraggedItemId(id);
+    console.log("Started dragging item:", id);
+    // You can add any additional logic here when drag starts
+  };
+
+  const handleDragEnd = async (id: string) => {
+    if (draggedOverItemId) {
+      console.log("Finished dragging item:", id);
+      const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
+      const draggedOverItem = toDoItems?.find(
+        (item) => item._id === draggedOverItemId
+      );
+      console.log("Dragged item:", draggedItem);
+      console.log("Dragged over item:", draggedOverItem);
+      console.log("Dragged over item id:", draggedOverItemId);
+      console.log("Dragged over item:", draggedOverItem);
+      if (draggedItem && (draggedOverItem || draggedOverItemId === "bottom")) {
+        console.log("Dragged item and dragged over item CP");
+        let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+
+        const movingItemOldOrder = draggedItem?.mainOrder || movingItemNewOrder;
+        if (draggedOverItemId === "bottom") {
+          movingItemNewOrder = maxMainOrder;
+          // movingItemOldOrder = maxMainOrder;
+        }
+        const difference = movingItemNewOrder - movingItemOldOrder;
+        console.log("Difference:", difference);
+        // console.log("Moving item new order:", movingItemNewOrder);
+        // console.log("Moving item old order:", movingItemOldOrder);
+        let interval = 0;
+        if (difference > 0) {
+          interval = 1;
+          movingItemNewOrder = movingItemNewOrder - 1;
+        } else {
+          interval = -1;
+        }
+        // console.log("Updating order for item:", movingItemOldOrder);
+        //
+        console.log("Moving item new order:", movingItemNewOrder);
+        console.log("Moving item old order:", movingItemOldOrder);
+        for (
+          let i = movingItemOldOrder + interval;
+          i !== movingItemNewOrder + interval;
+          i += interval
+        ) {
+          console.log("Updating order for item:", i);
+          const item = toDoItems?.find((item) => item.mainOrder === i);
+          if (item) {
+            updateOrder({
+              id: item._id as Id<"toDoItems">,
+              order: item.mainOrder - interval,
+            });
+          }
+        }
+        updateOrder({
+          id: draggedItemId as Id<"toDoItems">,
+          order: movingItemNewOrder,
+        });
+        // updateOrder({
+        //   id: draggedOverItemId as Id<"toDoItems">,
+        //   order: draggedItem?.mainOrder || 0,
+        // });
+      }
+    }
+    setDraggedItemId(null);
+    setDraggedOverItemId(null);
+    console.log("Finished dragging item:", id);
+    // You can add any additional logic here when drag ends
+  };
+
+  const handleDragOver = (id: string, e: React.DragEvent) => {
+    // Only log if it's a different item than the one being dragged
+    if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
+      setDraggedOverItemId(id);
+      console.log("Dragging over item:", id);
+    }
+  };
+
+  const handleDragEnter = (id: string) => {
+    // Only log if it's a different item than the one being dragged
+    if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
+      console.log("Entered item:", id);
+    }
+  };
+
+  const handleDragLeave = (id: string) => {
+    // Only log if it's a different item than the one being dragged
+    if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
+      console.log("Left item:", id);
+    }
+  };
+
+  const activeTasks = toDoItems?.filter((item) => !item.completed) || [];
+  const completedTasks = toDoItems?.filter((item) => item.completed) || [];
+
+  const maxMainOrder = (activeTasks.length || 0) + 1;
+  return (
+    <div className="space-y-8">
+      {/* Active Tasks */}
+      {activeTasks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white">
+            Active Tasks ({activeTasks.length})
+          </h3>
+          <div className="space-y-3">
+            {activeTasks.map(({ _id, text, completed, mainOrder }) => (
+              <TaskCard
+                key={_id}
+                _id={_id}
+                text={text}
+                completed={completed}
+                toggleComplete={() =>
+                  toggleComplete({ id: _id as Id<"toDoItems"> })
+                }
+                deleteItem={() => deleteItem({ id: _id as Id<"toDoItems"> })}
+                onDragStart={() => handleDragStart(_id)}
+                onDragEnd={() => handleDragEnd(_id)}
+                onDragOver={(id, e) => handleDragOver(id, e)}
+                onDragEnter={() => handleDragEnter(_id)}
+                onDragLeave={() => handleDragLeave(_id)}
+                draggedOverItemId={draggedOverItemId}
+                mainOrder={mainOrder}
+              />
+            ))}
+            {/* Invisible bottom drop zone */}
+            <div
+              id="bottom"
+              onDragOver={(e) => {
+                e.preventDefault();
+                handleDragOver("bottom", e);
+              }}
+              onDragEnter={() => handleDragEnter("bottom")}
+              onDragLeave={() => handleDragLeave("bottom")}
+              className="h-8 w-full relative"
+            >
+              {draggedOverItemId === "bottom" && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completed Tasks */}
+      {completedTasks.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-slate-300">
+            Completed Tasks ({completedTasks.length})
+          </h3>
+          <div className="space-y-3">
+            {completedTasks.map(({ _id, text, completed, mainOrder }) => (
+              <TaskCard
+                key={_id}
+                _id={_id}
+                text={text}
+                completed={completed}
+                toggleComplete={() =>
+                  toggleComplete({ id: _id as Id<"toDoItems"> })
+                }
+                deleteItem={() => deleteItem({ id: _id as Id<"toDoItems"> })}
+                onDragStart={() => handleDragStart(_id)}
+                onDragEnd={() => handleDragEnd(_id)}
+                onDragOver={(id, e) => handleDragOver(id, e)}
+                onDragEnter={() => handleDragEnter(_id)}
+                onDragLeave={() => handleDragLeave(_id)}
+                draggedOverItemId={draggedOverItemId}
+                mainOrder={mainOrder}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {(!toDoItems || toDoItems.length === 0) && (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">📝</div>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            No tasks yet
+          </h3>
+          <p className="text-slate-400">
+            Add your first task above to get started!
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

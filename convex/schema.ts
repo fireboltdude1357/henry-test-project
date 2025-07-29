@@ -23,7 +23,18 @@ const applicationTables = {
     completed: v.boolean(),
     mainOrder: v.number(),
     userId: v.id("users"),
-  }).index("by_user_and_order", ["userId", "mainOrder"]),
+    type: v.optional(
+      v.union(v.literal("project"), v.literal("task"), v.literal("folder"))
+    ),
+    dayOrder: v.optional(v.number()),
+    parentId: v.optional(v.id("toDoItems")),
+    // dueDate: v.optional(v.string()),
+    assignedDate: v.optional(v.string()),
+  })
+    .index("by_user_and_order", ["userId", "mainOrder"])
+    .index("by_user_type_and_order", ["userId", "type", "mainOrder"])
+    .index("by_user_day_order", ["userId", "dayOrder"])
+    .index("by_parent", ["parentId", "mainOrder"]),
   users: defineTable({
     name: v.string(),
     tokenIdentifier: v.string(),
@@ -31,6 +42,18 @@ const applicationTables = {
   })
     .index("by_token", ["tokenIdentifier"])
     .index("byExternalId", ["externalId"]),
+  calendarDays: defineTable({
+    date: v.string(),
+    dayOfWeek: v.number(),
+    items: v.array(v.id("toDoItems")),
+    userId: v.id("users"),
+  }).index("by_user_and_date", ["userId", "date"]),
+  calendarEvents: defineTable({
+    title: v.string(),
+    description: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+  }),
 };
 
 export default defineSchema({

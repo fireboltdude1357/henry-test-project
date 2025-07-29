@@ -23,11 +23,14 @@ export const get = query({
       .collect();
   },
 });
-
 export const create = mutation({
   args: {
     text: v.string(),
     order: v.number(),
+    type: v.optional(
+      v.union(v.literal("project"), v.literal("task"), v.literal("folder"))
+    ),
+    parentId: v.optional(v.id("toDoItems")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -42,11 +45,19 @@ export const create = mutation({
     if (userId === null) {
       throw new Error("User not found");
     }
+    if (args.parentId) {
+      const parentItem = await ctx.db.get(args.parentId);
+      if (!parentItem) {
+        throw new Error("Parent item not found");
+      }
+    }
+
     return await ctx.db.insert("toDoItems", {
       text: args.text,
       completed: false,
       mainOrder: args.order,
       userId: userId._id,
+      type: args.type,
     });
   },
 });
