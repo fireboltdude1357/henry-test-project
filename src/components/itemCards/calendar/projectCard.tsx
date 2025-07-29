@@ -180,15 +180,14 @@ export const ProjectCard = ({
   };
 
   const handleDragLeave = (id: string) => {
-    // Only log if it's a different item than the one being dragged
-    // console.log("draggedItemId", draggedItemId);
-    if (
-      draggedItemId &&
-      draggedItemId !== id &&
-      childDraggedOverItemId !== id
-    ) {
-      console.log("Left item:", id);
+    // Clear local child drag state when leaving
+    if (childDraggedOverItemId === id) {
+      setChildDraggedOverItemId(null);
+      console.log("Left child item, clearing childDraggedOverItemId:", id);
     }
+
+    // Forward to parent
+    onDragLeave?.(id);
   };
   // console.log("children", children);
   const handleDelete = () => {

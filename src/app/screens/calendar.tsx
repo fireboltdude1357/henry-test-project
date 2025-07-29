@@ -753,7 +753,11 @@ export default function CalendarScreen() {
                                   <input
                                     type="checkbox"
                                     checked={item.completed}
-                                    readOnly
+                                    onChange={() =>
+                                      toggleComplete({
+                                        id: item._id as Id<"toDoItems">,
+                                      })
+                                    }
                                     className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                                   />
                                   <div className="flex-1 min-w-0">
