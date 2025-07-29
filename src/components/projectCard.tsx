@@ -37,6 +37,8 @@ export const ProjectCard = ({
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const deleteChildItem = useMutation(api.toDoItems.deleteItem);
   const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
+  const deleteProject = useMutation(api.toDoItems.deleteProject);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
@@ -154,8 +156,12 @@ export const ProjectCard = ({
   };
   console.log("children", children);
   const handleDelete = () => {
-    deleteItem(_id);
+    deleteProject({ id: _id as Id<"toDoItems"> });
     setAdditionParentId(null);
+  };
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
   };
   return (
     <div className="relative">
@@ -196,7 +202,28 @@ export const ProjectCard = ({
                 : "text-purple-600 focus:ring-purple-500"
             }`}
           />
-          <span className="text-purple-400 text-sm mr-2">📁</span>
+          <button
+            onClick={toggleExpanded}
+            className="flex items-center text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
+            title={isExpanded ? "Collapse project" : "Expand project"}
+          >
+            <svg
+              className={`w-4 h-4 mr-1 transition-transform duration-200 ${
+                isExpanded ? "rotate-90" : "rotate-0"
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+            📁
+          </button>
           <span
             className={`flex-1 transition-colors duration-200 font-medium ${
               completed
@@ -205,6 +232,11 @@ export const ProjectCard = ({
             }`}
           >
             {text}
+            {children && children.length > 0 && (
+              <span className="ml-2 text-xs text-purple-400/70">
+                ({children.length} item{children.length !== 1 ? "s" : ""})
+              </span>
+            )}
           </span>
           <button
             onClick={() => setAdditionParentId(_id as Id<"toDoItems">)}
@@ -249,10 +281,10 @@ export const ProjectCard = ({
       </div>
 
       {isDraggedOver && (
-        <div className="absolute top-[-9px] left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
+        <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-purple-500 rounded-full"></div>
       )}
 
-      {children && children.length > 0 && (
+      {children && children.length > 0 && isExpanded && (
         <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
           {children.map((child) => (
             <ItemCard
@@ -286,7 +318,7 @@ export const ProjectCard = ({
             }}
             onDragEnter={() => handleDragEnter("child-bottom")}
             onDragLeave={() => handleDragLeave("child-bottom")}
-            className="h-6 w-full relative"
+            className="h-[1px] w-full relative"
           >
             {childDraggedOverItemId === "child-bottom" && (
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>

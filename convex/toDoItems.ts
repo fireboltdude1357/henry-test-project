@@ -148,3 +148,73 @@ export const deleteItem = mutation({
     return { deletedOrder, updatedCount: itemsToUpdate.length };
   },
 });
+
+export const deleteProject = mutation({
+  args: {
+    id: v.id("toDoItems"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    // Helper function to recursively delete all children
+    async function deleteAllChildren(parentId: Id<"toDoItems">): Promise<void> {
+      const children = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_parent", (q) => q.eq("parentId", parentId))
+        .collect();
+
+      for (const child of children) {
+        // If child is a project, recursively delete its children first
+        if (child.type === "project" || child.type === "folder") {
+          await deleteAllChildren(child._id);
+        }
+        // Delete the child
+        await ctx.db.delete(child._id);
+      }
+    }
+
+    // Get the project being deleted
+    const projectToDelete = await ctx.db.get(args.id);
+    if (projectToDelete === null) {
+      throw new Error("Project not found");
+    }
+    if (projectToDelete.userId !== userId._id) {
+      throw new Error("Project does not belong to user");
+    }
+
+    const deletedOrder = projectToDelete.mainOrder;
+
+    // Recursively delete all children first
+    await deleteAllChildren(args.id);
+
+    // Delete the project itself
+    await ctx.db.delete(args.id);
+
+    // Get all items with order greater than the deleted project's order
+    const itemsToUpdate = await ctx.db
+      .query("toDoItems")
+      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+      .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+      .collect();
+
+    // Update their orders to close the gap
+    for (const item of itemsToUpdate) {
+      await ctx.db.patch(item._id, {
+        mainOrder: item.mainOrder - 1,
+      });
+    }
+
+    return { deletedOrder, updatedCount: itemsToUpdate.length };
+  },
+});

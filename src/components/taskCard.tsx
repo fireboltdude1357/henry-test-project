@@ -100,7 +100,7 @@ export const TaskCard = ({
         </button>
       </div>
       {isDraggedOver && (
-        <div className="absolute top-[-9px] left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
+        <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
       )}
     </div>
   );
