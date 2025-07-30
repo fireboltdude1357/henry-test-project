@@ -95,7 +95,62 @@ export const toggleComplete = mutation({
     if (toDoItem.userId !== userId._id) {
       throw new Error("To-do item does not belong to user");
     }
-    return await ctx.db.patch(args.id, { completed: !toDoItem.completed });
+
+    const newCompletedState = !toDoItem.completed;
+
+    if (newCompletedState) {
+      // Completing an item: remove its main order and propagate uncompleted tasks
+      const deletedOrder = toDoItem.mainOrder;
+
+      if (deletedOrder !== undefined) {
+        // Get all uncompleted items with order greater than the completed item's order
+        const itemsToUpdate = await ctx.db
+          .query("toDoItems")
+          .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+          .filter((q) =>
+            q.and(
+              q.gt(q.field("mainOrder"), deletedOrder),
+              q.eq(q.field("completed"), false)
+            )
+          )
+          .collect();
+
+        // Update their orders to close the gap
+        for (const item of itemsToUpdate) {
+          if (item.mainOrder !== undefined) {
+            await ctx.db.patch(item._id, {
+              mainOrder: item.mainOrder - 1,
+            });
+          }
+        }
+      }
+
+      // Remove the main order from the completed item
+      return await ctx.db.patch(args.id, {
+        completed: newCompletedState,
+        mainOrder: undefined,
+      });
+    } else {
+      // Uncompleting an item: add it to the end of the order
+
+      // Get the highest order among uncompleted items
+      const uncompletedItems = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+        .filter((q) => q.eq(q.field("completed"), false))
+        .collect();
+
+      const maxOrder =
+        uncompletedItems.length > 0
+          ? Math.max(...uncompletedItems.map((item) => item.mainOrder || 0))
+          : 0;
+
+      // Assign the item to the end of the order
+      return await ctx.db.patch(args.id, {
+        completed: newCompletedState,
+        mainOrder: maxOrder + 1,
+      });
+    }
   },
 });
 
@@ -131,21 +186,30 @@ export const deleteItem = mutation({
     // Delete the item
     await ctx.db.delete(args.id);
 
-    // Get all items with order greater than the deleted item's order
-    const itemsToUpdate = await ctx.db
-      .query("toDoItems")
-      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-      .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
-      .collect();
+    let updatedCount = 0;
+    if (deletedOrder !== undefined) {
+      // Get all items with order greater than the deleted item's order
+      const itemsToUpdate = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+        .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+        .collect();
 
-    // Update their orders to close the gap
-    for (const item of itemsToUpdate) {
-      await ctx.db.patch(item._id, {
-        mainOrder: item.mainOrder - 1,
-      });
+      // Update their orders to close the gap
+      for (const item of itemsToUpdate) {
+        if (item.mainOrder !== undefined) {
+          await ctx.db.patch(item._id, {
+            mainOrder: item.mainOrder - 1,
+          });
+        }
+      }
+      updatedCount = itemsToUpdate.length;
     }
 
-    return { deletedOrder, updatedCount: itemsToUpdate.length };
+    return {
+      deletedOrder,
+      updatedCount,
+    };
   },
 });
 
@@ -201,21 +265,27 @@ export const deleteProject = mutation({
     // Delete the project itself
     await ctx.db.delete(args.id);
 
-    // Get all items with order greater than the deleted project's order
-    const itemsToUpdate = await ctx.db
-      .query("toDoItems")
-      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-      .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
-      .collect();
+    let updatedCount = 0;
+    if (deletedOrder !== undefined) {
+      // Get all items with order greater than the deleted project's order
+      const itemsToUpdate = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+        .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+        .collect();
 
-    // Update their orders to close the gap
-    for (const item of itemsToUpdate) {
-      await ctx.db.patch(item._id, {
-        mainOrder: item.mainOrder - 1,
-      });
+      // Update their orders to close the gap
+      for (const item of itemsToUpdate) {
+        if (item.mainOrder !== undefined) {
+          await ctx.db.patch(item._id, {
+            mainOrder: item.mainOrder - 1,
+          });
+        }
+      }
+      updatedCount = itemsToUpdate.length;
     }
 
-    return { deletedOrder, updatedCount: itemsToUpdate.length };
+    return { deletedOrder, updatedCount };
   },
 });
 

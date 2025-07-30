@@ -21,7 +21,7 @@ const applicationTables = {
   toDoItems: defineTable({
     text: v.string(),
     completed: v.boolean(),
-    mainOrder: v.number(),
+    mainOrder: v.optional(v.number()),
     userId: v.id("users"),
     type: v.optional(
       v.union(v.literal("project"), v.literal("task"), v.literal("folder"))

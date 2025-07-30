@@ -130,44 +130,50 @@ export default function CalendarDay({
         console.log("Dragged over item:", draggedOverItem);
         console.log("Dragged over item id:", draggedOverItemId);
 
-        if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
+        if (
+          draggedItem &&
+          draggedOverItem &&
+          !draggedOverItem.parentId &&
+          draggedOverItem.mainOrder !== undefined
+        ) {
           console.log("Reordering items");
-          let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+          let movingItemNewOrder = draggedOverItem.mainOrder;
 
-          const movingItemOldOrder =
-            draggedItem?.mainOrder || movingItemNewOrder;
+          const movingItemOldOrder = draggedItem.mainOrder;
 
-          const difference = movingItemNewOrder - movingItemOldOrder;
-          console.log("Difference:", difference);
+          if (movingItemOldOrder !== undefined) {
+            const difference = movingItemNewOrder - movingItemOldOrder;
+            console.log("Difference:", difference);
 
-          let interval = 0;
-          if (difference > 0) {
-            interval = 1;
-            movingItemNewOrder = movingItemNewOrder - 1;
-          } else {
-            interval = -1;
-          }
-
-          console.log("Moving item new order:", movingItemNewOrder);
-          console.log("Moving item old order:", movingItemOldOrder);
-          for (
-            let i = movingItemOldOrder + interval;
-            i !== movingItemNewOrder + interval;
-            i += interval
-          ) {
-            console.log("Updating order for item:", i);
-            const item = toDoItems?.find((item) => item.mainOrder === i);
-            if (item) {
-              updateOrder({
-                id: item._id as Id<"toDoItems">,
-                order: item.mainOrder - interval,
-              });
+            let interval = 0;
+            if (difference > 0) {
+              interval = 1;
+              movingItemNewOrder = movingItemNewOrder - 1;
+            } else {
+              interval = -1;
             }
+
+            console.log("Moving item new order:", movingItemNewOrder);
+            console.log("Moving item old order:", movingItemOldOrder);
+            for (
+              let i = movingItemOldOrder + interval;
+              i !== movingItemNewOrder + interval;
+              i += interval
+            ) {
+              console.log("Updating order for item:", i);
+              const item = toDoItems?.find((item) => item.mainOrder === i);
+              if (item && item.mainOrder !== undefined) {
+                updateOrder({
+                  id: item._id as Id<"toDoItems">,
+                  order: item.mainOrder - interval,
+                });
+              }
+            }
+            updateOrder({
+              id: draggedItemId as Id<"toDoItems">,
+              order: movingItemNewOrder,
+            });
           }
-          updateOrder({
-            id: draggedItemId as Id<"toDoItems">,
-            order: movingItemNewOrder,
-          });
         }
       } else if (draggedOverItemId === "bottom" && draggedItem) {
         // Handle dropping at bottom
@@ -234,9 +240,18 @@ export default function CalendarDay({
   };
   const zeroLevelItems =
     toDoItems?.filter((item) => item.parentId === undefined) || [];
-  const activeTasks = zeroLevelItems?.filter((item) => !item.completed) || [];
+  const activeTasks =
+    zeroLevelItems?.filter(
+      (item) => !item.completed && item.mainOrder !== undefined
+    ) || [];
   const completedTasks = zeroLevelItems?.filter((item) => item.completed) || [];
-  const maxMainOrder = (activeTasks.length || 0) + 1;
+  const activeTasksWithOrder = activeTasks.filter(
+    (item) => item.mainOrder !== undefined
+  );
+  const maxMainOrder =
+    activeTasksWithOrder.length > 0
+      ? Math.max(...activeTasksWithOrder.map((item) => item.mainOrder!)) + 1
+      : 1;
 
   return (
     <div>
