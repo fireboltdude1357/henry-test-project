@@ -4,6 +4,8 @@ import { api } from "../../../convex/_generated/api";
 import { useState, useEffect, useMemo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { CalendarItemDisplay } from "@/components/displayItems/calendarDisplay";
+import { Authenticated } from "convex/react";
+import CalendarDay from "@/components/calendarDay";
 
 export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -220,6 +222,9 @@ export default function CalendarScreen() {
         const dateStr = id.substring(0, 10);
         setDraggedOverItemId(dateStr);
         console.log("Dragging over date item, treating as day:", dateStr);
+      } else if (id === "bottom") {
+        setDraggedOverItemId(id);
+        console.log("Dragging over bottom");
       } else {
         // Handle dragging over todo items - removed parentId restriction
         const draggedOverItem = toDoItems?.find((item) => item._id === id);
@@ -253,364 +258,176 @@ export default function CalendarScreen() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="max-w-[1600px] mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Calendar</h1>
-              <p className="text-slate-400">
-                Plan and organize your tasks by day
-              </p>
-            </div>
-
-            {/* Controls */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 bg-slate-800/50 rounded-lg px-4 py-2 border border-slate-700">
-                <span className="text-slate-300 text-sm font-medium">
-                  View:
-                </span>
-                <select
-                  value={numDays}
-                  onChange={(e) => setNumDays(Number(e.target.value))}
-                  className="bg-slate-700 text-white px-3 py-1.5 rounded-md border border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value={1}>1 Day</option>
-                  <option value={3}>3 Days</option>
-                  <option value={5}>5 Days</option>
-                  <option value={7}>7 Days</option>
-                </select>
+      <Authenticated>
+        <div className="max-w-[1600px] mx-auto p-6">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div>
+                <h1 className="text-3xl font-bold text-white mb-2">Calendar</h1>
+                <p className="text-slate-400">
+                  Plan and organize your tasks by day
+                </p>
               </div>
 
-              <button
-                onClick={goToToday}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-600/20"
-              >
-                Today
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-[300px_1fr] gap-8">
-          {/* Sidebar - Task List */}
-          <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700/50 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold text-white mb-4">Task List</h2>
-            <CalendarItemDisplay
-              activeTasks={activeTasks}
-              completedTasks={completedTasks}
-              draggedOverItemId={draggedOverItemId}
-              handleDragOver={handleDragOver}
-              handleDragEnter={handleDragEnter}
-              handleDragLeave={handleDragLeave}
-              handleDragStart={handleDragStart}
-              handleDragEnd={handleDragEnd}
-              toggleComplete={(id) => toggleComplete({ id })}
-              deleteItem={(id) => deleteItem({ id })}
-              toDoItems={toDoItems || []}
-              draggedItemId={draggedItemId}
-              setDraggedItemId={setDraggedItemId}
-            />
-          </div>
-
-          {/* Main Calendar Area */}
-          <div className="space-y-6">
-            {/* Navigation */}
-            <div className="flex items-center justify-between bg-slate-800/30 rounded-xl p-4 border border-slate-700/50 backdrop-blur-sm">
-              <button
-                onClick={goToPreviousDays}
-                className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                Previous {numDays} day{numDays > 1 ? "s" : ""}
-              </button>
-
-              <div className="text-center">
-                <div className="text-white text-xl font-semibold">
-                  {formatDateForDisplay(dateRange[0])}
-                  {numDays > 1 &&
-                    ` - ${formatDateForDisplay(dateRange[dateRange.length - 1])}`}
-                </div>
-                <div className="text-slate-400 text-sm mt-1">
-                  {dateRange[0].toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                  })}
-                </div>
-              </div>
-
-              <button
-                onClick={goToNextDays}
-                className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Next {numDays} day{numDays > 1 ? "s" : ""}
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Day Grid */}
-            <div
-              className={`grid gap-6 ${
-                numDays === 1
-                  ? "grid-cols-1"
-                  : numDays <= 3
-                    ? "grid-cols-1 xl:grid-cols-3"
-                    : numDays <= 5
-                      ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
-                      : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
-              }`}
-            >
-              {dateRange.map((date, index) => {
-                const dateStr = formatDateForAPI(date);
-                const dayItems = itemsByDate[dateStr] || [];
-                const isToday =
-                  date.toDateString() === new Date().toDateString();
-                const completedCount = dayItems.filter(
-                  (item) => item.completed
-                ).length;
-                const totalCount = dayItems.length;
-
-                return (
-                  <div
-                    key={dateStr}
-                    id={dateStr}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      //   e.stopPropagation();
-                      handleDragOver(dateStr, e);
-                    }}
-                    onDragEnter={(e) => {
-                      e.stopPropagation();
-                      handleDragEnter(dateStr);
-                    }}
-                    onDragLeave={(e) => {
-                      e.stopPropagation();
-                      handleDragLeave(dateStr);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log(
-                        "Day container drop event triggered for:",
-                        dateStr
-                      );
-                      console.log("Current draggedItemId:", draggedItemId);
-
-                      if (draggedItemId) {
-                        // Directly assign the item to the date instead of using handleDragEnd
-                        const draggedItem = toDoItems?.find(
-                          (item) => item._id === draggedItemId
-                        );
-                        console.log("Found dragged item:", draggedItem);
-
-                        if (draggedItem) {
-                          console.log("Assigning item to date:", dateStr);
-                          assignItemToDate({
-                            id: draggedItem._id as Id<"toDoItems">,
-                            date: dateStr,
-                          })
-                            .then(() => {
-                              console.log("Successfully assigned item to date");
-                              // Reset drag state
-                              setDraggedItemId(null);
-                              setDraggedOverItemId(null);
-                            })
-                            .catch((error) => {
-                              console.error(
-                                "Failed to assign item to date:",
-                                error
-                              );
-                              // Reset drag state even on error
-                              setDraggedItemId(null);
-                              setDraggedOverItemId(null);
-                            });
-                        } else {
-                          // Reset drag state if no item found
-                          setDraggedItemId(null);
-                          setDraggedOverItemId(null);
-                        }
-                      }
-                    }}
-                    className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
-                      isToday
-                        ? "border-blue-500 shadow-blue-500/20"
-                        : draggedOverItemId === dateStr
-                          ? "border-green-500 bg-green-500/10 shadow-green-500/20"
-                          : "border-slate-700/50 hover:border-slate-600"
-                    }`}
+              {/* Controls */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 bg-slate-800/50 rounded-lg px-4 py-2 border border-slate-700">
+                  <span className="text-slate-300 text-sm font-medium">
+                    View:
+                  </span>
+                  <select
+                    value={numDays}
+                    onChange={(e) => setNumDays(Number(e.target.value))}
+                    className="bg-slate-700 text-white px-3 py-1.5 rounded-md border border-slate-600 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {/* Day Header */}
-                    <div className="p-6 pb-4 border-b border-slate-700/50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div
-                          className={`text-xl font-bold ${
-                            isToday ? "text-blue-400" : "text-white"
-                          }`}
-                        >
-                          {formatDateForDisplay(date)}
-                        </div>
-                        {isToday && (
-                          <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                            Today
-                          </div>
-                        )}
-                      </div>
+                    <option value={1}>1 Day</option>
+                    <option value={3}>3 Days</option>
+                    <option value={5}>5 Days</option>
+                    <option value={7}>7 Days</option>
+                  </select>
+                </div>
 
-                      <div className="flex items-center justify-between">
-                        <div className="text-slate-400 text-sm">
-                          {getDayOfWeek(date)} • {date.getDate()}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          {totalCount > 0 && (
-                            <>
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span className="text-green-400 font-medium">
-                                  {completedCount}
-                                </span>
-                              </div>
-                              <div className="text-slate-500">/</div>
-                              <div className="flex items-center gap-1">
-                                <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                                <span className="text-slate-400 font-medium">
-                                  {totalCount}
-                                </span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                <button
+                  onClick={goToToday}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-blue-600/20"
+                >
+                  Today
+                </button>
+              </div>
+            </div>
+          </div>
 
-                    {/* Tasks for this day */}
-                    <div className="p-6 pt-4">
-                      <div className="space-y-3 mb-4">
-                        {dayItems.length > 0 ? (
-                          dayItems.map((item) => (
-                            <div
-                              key={dateStr + item._id}
-                              className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
-                                item.completed
-                                  ? "border-green-500/30 bg-green-500/5"
-                                  : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
-                              }`}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                handleDragOver(dateStr + item._id, e);
-                              }}
-                              onDragEnter={(e) => {
-                                e.stopPropagation();
-                              }}
-                              onDragLeave={(e) => {
-                                e.stopPropagation();
-                              }}
-                            >
-                              <div className="flex items-start gap-3">
-                                <input
-                                  type="checkbox"
-                                  checked={item.completed}
-                                  readOnly
-                                  className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div
-                                    className={`text-sm font-medium ${
-                                      item.completed
-                                        ? "line-through text-slate-400"
-                                        : "text-white"
-                                    }`}
-                                  >
-                                    {item.text}
-                                  </div>
-                                  {item.type && (
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <div
-                                        className={`w-2 h-2 rounded-full ${
-                                          item.type === "project"
-                                            ? "bg-purple-500"
-                                            : item.type === "task"
-                                              ? "bg-blue-500"
-                                              : "bg-yellow-500"
-                                        }`}
-                                      ></div>
-                                      <span className="text-xs text-slate-400 capitalize">
-                                        {item.type}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-12">
-                            <div className="text-4xl mb-3 opacity-50">📅</div>
-                            <div className="text-slate-500 text-sm">
-                              No tasks scheduled
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Add task button */}
-                      <button className="w-full text-slate-400 hover:text-white text-sm py-3 border-2 border-dashed border-slate-600 rounded-lg hover:border-slate-500 hover:bg-slate-700/30 transition-all duration-200 flex items-center justify-center gap-2">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        Add task for {formatDateForDisplay(date)}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="grid grid-cols-[300px_1fr] gap-8">
+            {/* Sidebar - Task List */}
+            <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-700/50 backdrop-blur-sm">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                Task List
+              </h2>
+              <CalendarItemDisplay
+                activeTasks={activeTasks}
+                completedTasks={completedTasks}
+                draggedOverItemId={draggedOverItemId}
+                handleDragOver={handleDragOver}
+                handleDragEnter={handleDragEnter}
+                handleDragLeave={handleDragLeave}
+                handleDragStart={handleDragStart}
+                handleDragEnd={handleDragEnd}
+                toggleComplete={(id) => toggleComplete({ id })}
+                deleteItem={(id) => deleteItem({ id })}
+                toDoItems={toDoItems || []}
+                draggedItemId={draggedItemId}
+                setDraggedItemId={setDraggedItemId}
+              />
             </div>
 
-            {/* Loading state */}
-            {items === undefined && (
-              <div className="text-center py-12">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-700 rounded-full mb-4">
-                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            {/* Main Calendar Area */}
+            <div className="space-y-6">
+              {/* Navigation */}
+              <div className="flex items-center justify-between bg-slate-800/30 rounded-xl p-4 border border-slate-700/50 backdrop-blur-sm">
+                <button
+                  onClick={goToPreviousDays}
+                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  Previous {numDays} day{numDays > 1 ? "s" : ""}
+                </button>
+
+                <div className="text-center">
+                  <div className="text-white text-xl font-semibold">
+                    {formatDateForDisplay(dateRange[0])}
+                    {numDays > 1 &&
+                      ` - ${formatDateForDisplay(dateRange[dateRange.length - 1])}`}
+                  </div>
+                  <div className="text-slate-400 text-sm mt-1">
+                    {dateRange[0].toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                    })}
+                  </div>
                 </div>
-                <div className="text-slate-400">Loading tasks...</div>
+
+                <button
+                  onClick={goToNextDays}
+                  className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Next {numDays} day{numDays > 1 ? "s" : ""}
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
               </div>
-            )}
+
+              {/* Day Grid */}
+              <div
+                className={`grid gap-6 ${
+                  numDays === 1
+                    ? "grid-cols-1"
+                    : numDays <= 3
+                      ? "grid-cols-1 xl:grid-cols-3"
+                      : numDays <= 5
+                        ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
+                        : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
+                }`}
+              >
+                {dateRange.map((date, index) => {
+                  const dateStr = formatDateForAPI(date);
+                  const dayItems = itemsByDate[dateStr] || [];
+                  const isToday =
+                    date.toDateString() === new Date().toDateString();
+                  const completedCount = dayItems.filter(
+                    (item) => item.completed
+                  ).length;
+                  const totalCount = dayItems.length;
+
+                  return (
+                    <CalendarDay
+                      key={dateStr}
+                      date={dateStr}
+                      draggedOverItemId={draggedOverItemId}
+                      setDraggedOverItemId={setDraggedOverItemId}
+                      draggedItemId={draggedItemId}
+                      setDraggedItemId={setDraggedItemId}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Loading state */}
+              {items === undefined && (
+                <div className="text-center py-12">
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-700 rounded-full mb-4">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <div className="text-slate-400">Loading tasks...</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </Authenticated>
     </div>
   );
 }

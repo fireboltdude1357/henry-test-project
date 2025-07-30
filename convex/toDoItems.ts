@@ -308,7 +308,41 @@ export const assignItemToDate = mutation({
     if (item.userId !== userId._id) {
       throw new Error("To-do item does not belong to user");
     }
+    if (item.assignedDate && item.assignedDate !== args.date) {
+      // Remove item from old calendar day
+      const oldCalendarDay = await ctx.db
+        .query("calendarDays")
+        .withIndex("by_user_and_date", (q) =>
+          q.eq("userId", userId._id).eq("date", item.assignedDate!)
+        )
+        .unique();
+      if (oldCalendarDay) {
+        await ctx.db.patch(oldCalendarDay._id, {
+          items: oldCalendarDay.items.filter((id) => id !== args.id),
+        });
+      }
+    }
+    // Check if calendar day already exists
+    const existingCalendarDay = await ctx.db
+      .query("calendarDays")
+      .withIndex("by_user_and_date", (q) =>
+        q.eq("userId", userId._id).eq("date", args.date)
+      )
+      .unique();
 
+    if (existingCalendarDay) {
+      // Update existing calendar day
+      await ctx.db.patch(existingCalendarDay._id, {
+        items: [...existingCalendarDay.items, args.id],
+      });
+    } else {
+      // Create new calendar day
+      await ctx.db.insert("calendarDays", {
+        date: args.date,
+        items: [args.id],
+        userId: userId._id,
+      });
+    }
     return await ctx.db.patch(args.id, { assignedDate: args.date });
   },
 });

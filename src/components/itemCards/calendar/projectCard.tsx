@@ -329,6 +329,8 @@ export const ProjectCard = ({
               mainOrder={child.mainOrder}
               setAdditionParentId={setAdditionParentId}
               type={child.type || "task"}
+              draggedItemId={draggedItemId}
+              setDraggedItemId={setDraggedItemId}
             />
           ))}
           {/* Bottom drop zone for child items */}
