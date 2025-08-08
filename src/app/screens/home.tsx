@@ -28,7 +28,7 @@ export default function HomeScreen({
 
   const handleDragEnd = async (id: string) => {
     if (draggedOverItemId) {
-      console.log("Finished dragging item:", id);
+      console.log("Finished dragging item in home.tsx:", id);
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
       const draggedOverItem = toDoItems?.find(
         (item) => item._id === draggedOverItemId
@@ -87,7 +87,7 @@ export default function HomeScreen({
     }
     setDraggedItemId(null);
     setDraggedOverItemId(null);
-    console.log("Finished dragging item:", id);
+    console.log("Finished dragging item in home.tsx on line 89:", id);
     // You can add any additional logic here when drag ends
   };
 

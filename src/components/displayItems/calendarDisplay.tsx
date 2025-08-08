@@ -15,6 +15,10 @@ export const CalendarItemDisplay = ({
   toDoItems,
   draggedItemId,
   setDraggedItemId,
+  setChildDraggedOverItemId,
+  childDraggedOverItemId,
+  childDraggedItemId,
+  setChildDraggedItemId,
 }: {
   activeTasks: Doc<"toDoItems">[];
   completedTasks: Doc<"toDoItems">[];
@@ -29,6 +33,10 @@ export const CalendarItemDisplay = ({
   toDoItems: Doc<"toDoItems">[];
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  childDraggedItemId: string | null;
+  setChildDraggedItemId: (id: string | null) => void;
 }) => {
   return (
     <div className="space-y-8 ">
@@ -57,6 +65,10 @@ export const CalendarItemDisplay = ({
                 type={type || "task"}
                 draggedItemId={draggedItemId}
                 setDraggedItemId={setDraggedItemId}
+                setChildDraggedOverItemId={setChildDraggedOverItemId}
+                childDraggedOverItemId={childDraggedOverItemId}
+                childDraggedItemId={childDraggedItemId}
+                setChildDraggedItemId={setChildDraggedItemId}
               />
             ))}
             {/* Invisible bottom drop zone */}
@@ -103,6 +115,10 @@ export const CalendarItemDisplay = ({
                 type={type || "task"}
                 draggedItemId={draggedItemId}
                 setDraggedItemId={setDraggedItemId}
+                setChildDraggedOverItemId={setChildDraggedOverItemId}
+                childDraggedOverItemId={childDraggedOverItemId}
+                childDraggedItemId={childDraggedItemId}
+                setChildDraggedItemId={setChildDraggedItemId}
               />
             ))}
           </div>

@@ -21,6 +21,12 @@ export default function CalendarScreen() {
   const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
     null
   );
+  const [childDraggedOverItemId, setChildDraggedOverItemId] = useState<
+    string | null
+  >(null);
+  const [childDraggedItemId, setChildDraggedItemId] = useState<string | null>(
+    null
+  );
 
   // Generate array of dates for the view
   const dateRange = useMemo(() => {
@@ -175,7 +181,7 @@ export default function CalendarScreen() {
             if (item) {
               updateOrder({
                 id: item._id as Id<"toDoItems">,
-                order: item.mainOrder - interval,
+                order: (item.mainOrder || 0) - interval,
               });
             }
           }
@@ -199,6 +205,7 @@ export default function CalendarScreen() {
   };
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
+    console.log("id:", id);
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
       // Only log if it's a different item than the one being dragged
@@ -212,6 +219,19 @@ export default function CalendarScreen() {
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(id);
       console.log("isDateContainer", isDateContainer);
       console.log("isDateItem", isDateItem);
+      console.log("draggedItemId", draggedItemId);
+
+      const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
+      console.log("draggedItem", draggedItem);
+      if (draggedItem && draggedItem.parentId) {
+        setChildDraggedOverItemId(draggedItem.parentId);
+        setChildDraggedItemId(draggedItemId);
+        console.log("Setting childDraggedOverItemId to:", draggedItem.parentId);
+      } else {
+        setChildDraggedOverItemId(null);
+        setChildDraggedItemId(null);
+        console.log("Setting childDraggedOverItemId to null");
+      }
 
       if (isDateContainer) {
         // Allow dragging over day containers (works for all items, including nested ones)
@@ -318,6 +338,10 @@ export default function CalendarScreen() {
                 toDoItems={toDoItems || []}
                 draggedItemId={draggedItemId}
                 setDraggedItemId={setDraggedItemId}
+                childDraggedOverItemId={childDraggedOverItemId}
+                setChildDraggedOverItemId={setChildDraggedOverItemId}
+                childDraggedItemId={childDraggedItemId}
+                setChildDraggedItemId={setChildDraggedItemId}
               />
             </div>
 
@@ -410,6 +434,10 @@ export default function CalendarScreen() {
                       setDraggedOverItemId={setDraggedOverItemId}
                       draggedItemId={draggedItemId}
                       setDraggedItemId={setDraggedItemId}
+                      setChildDraggedOverItemId={setChildDraggedOverItemId}
+                      childDraggedOverItemId={childDraggedOverItemId}
+                      childDraggedItemId={childDraggedItemId}
+                      setChildDraggedItemId={setChildDraggedItemId}
                     />
                   );
                 })}

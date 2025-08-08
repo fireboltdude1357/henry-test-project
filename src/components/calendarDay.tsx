@@ -11,15 +11,23 @@ export default function CalendarDay({
   draggedOverItemId,
   setDraggedOverItemId,
   setDraggedItemId,
+  setChildDraggedOverItemId,
+  childDraggedOverItemId,
+  childDraggedItemId,
+  setChildDraggedItemId,
 }: {
   date: string;
   draggedItemId: string | null;
   draggedOverItemId: string | null;
   setDraggedOverItemId: (id: string | null) => void;
   setDraggedItemId: (id: string | null) => void;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  childDraggedItemId: string | null;
+  setChildDraggedItemId: (id: string | null) => void;
 }) {
-  console.log("date:", date);
-  console.log("draggedOverItemId:", draggedOverItemId);
+  // console.log("date:", date);
+  // console.log("draggedOverItemId:", draggedOverItemId);
   const [numDays, setNumDays] = useState<number>(3);
   const [startDate, setStartDate] = useState<Date>(new Date());
   const calendarDayData = useQuery(api.calendarDays.get, {
@@ -28,7 +36,7 @@ export default function CalendarDay({
 
   const calendarDay = calendarDayData?.day;
   const dayItems = calendarDayData?.items;
-  console.log("calendarDay:", calendarDayData);
+  // console.log("calendarDay:", calendarDayData);
   const toDoItems = useQuery(api.toDoItems.get);
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
@@ -91,7 +99,7 @@ export default function CalendarDay({
 
   const handleDragStart = (id: string) => {
     setDraggedOverItemId(id);
-    console.log("Started dragging item:", id);
+    // console.log("Started dragging item:", id);
     // You can add any additional logic here when drag starts
   };
 
@@ -190,6 +198,7 @@ export default function CalendarDay({
   };
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
+    console.log("id:", id);
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
       // Only log if it's a different item than the one being dragged
@@ -203,6 +212,19 @@ export default function CalendarDay({
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(id);
       console.log("isDateContainer", isDateContainer);
       console.log("isDateItem", isDateItem);
+      console.log("draggedItemId", draggedItemId);
+
+      const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
+      console.log("draggedItem", draggedItem);
+      if (draggedItem && draggedItem.parentId) {
+        setChildDraggedOverItemId(id);
+        setChildDraggedItemId(draggedItemId);
+        console.log("Setting childDraggedOverItemId to:", id);
+      } else {
+        setChildDraggedOverItemId(null);
+        setChildDraggedItemId(null);
+        console.log("Setting childDraggedOverItemId to null");
+      }
 
       if (isDateContainer) {
         // Allow dragging over day containers (works for all items, including nested ones)
@@ -213,6 +235,9 @@ export default function CalendarDay({
         const dateStr = id.substring(0, 10);
         setDraggedOverItemId(dateStr);
         console.log("Dragging over date item, treating as day:", dateStr);
+      } else if (id === "bottom") {
+        setDraggedOverItemId(id);
+        console.log("Dragging over bottom");
       } else {
         // Handle dragging over todo items - removed parentId restriction
         const draggedOverItem = toDoItems?.find((item) => item._id === id);

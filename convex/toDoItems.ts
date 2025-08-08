@@ -110,7 +110,8 @@ export const toggleComplete = mutation({
           .filter((q) =>
             q.and(
               q.gt(q.field("mainOrder"), deletedOrder),
-              q.eq(q.field("completed"), false)
+              q.eq(q.field("completed"), false),
+              q.eq(q.field("parentId"), toDoItem.parentId)
             )
           )
           .collect();
@@ -137,7 +138,12 @@ export const toggleComplete = mutation({
       const uncompletedItems = await ctx.db
         .query("toDoItems")
         .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-        .filter((q) => q.eq(q.field("completed"), false))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("completed"), false),
+            q.eq(q.field("parentId"), toDoItem.parentId)
+          )
+        )
         .collect();
 
       const maxOrder =

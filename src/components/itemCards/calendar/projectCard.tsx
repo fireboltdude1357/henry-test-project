@@ -20,6 +20,8 @@ export const ProjectCard = ({
   setAdditionParentId,
   draggedItemId,
   setDraggedItemId,
+  setChildDraggedOverItemId,
+  childDraggedOverItemId,
 }: {
   _id: string;
   text: string;
@@ -36,21 +38,22 @@ export const ProjectCard = ({
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  childDraggedItemId: string | null;
 }) => {
   const isDraggedOver = draggedOverItemId === _id;
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const deleteChildItem = useMutation(api.toDoItems.deleteItem);
   const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteProject = useMutation(api.toDoItems.deleteProject);
+  const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
   const [isExpanded, setIsExpanded] = useState(true);
 
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
   });
 
-  const [childDraggedOverItemId, setChildDraggedOverItemId] = useState<
-    string | null
-  >(null);
   const handleDragStart = (id: string) => {
     setDraggedItemId(id);
     console.log("Started dragging item:", id);
@@ -67,22 +70,30 @@ export const ProjectCard = ({
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
       if (isDateContainer) {
         setChildDraggedOverItemId(id);
-        console.log("Dragging over date container:", id);
+        console.log(
+          "Dragging over date container and set childDraggedOverItemId:",
+          id
+        );
       } else {
         setChildDraggedOverItemId(id);
-        console.log("Dragging over item:", id);
+        console.log("Dragging over item and set childDraggedOverItemId:", id);
       }
+      // onDragOver?.(id, e);
     }
   };
   const handleDragEnd = async (id: string) => {
     console.log("================================================");
     console.log("childDraggedOverItemId", childDraggedOverItemId);
     if (childDraggedOverItemId) {
-      console.log("Finished dragging item:", id);
+      console.log("Finished dragging item in projectCard.tsx on line 87:", id);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(
         childDraggedOverItemId
       );
+      const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(
+        childDraggedOverItemId
+      );
       console.log("isDateContainer", isDateContainer);
+      console.log("isDateItem", isDateItem);
       const draggedItem = children?.find((item) => item._id === draggedItemId);
       const draggedOverItem = children?.find(
         (item) => item._id === childDraggedOverItemId
@@ -91,7 +102,30 @@ export const ProjectCard = ({
       console.log("Dragged over item:", draggedOverItem);
       console.log("Dragged over item id:", childDraggedOverItemId);
       console.log("Dragged over item:", draggedOverItem);
-      if (
+      if (isDateItem && draggedItem) {
+        console.log("Assigning item to date:", childDraggedOverItemId);
+        try {
+          await assignItemToDate({
+            id: draggedItem._id as Id<"toDoItems">,
+            date: childDraggedOverItemId,
+          });
+          console.log("Successfully assigned item to date");
+        } catch (error) {
+          console.error("Failed to assign item to date:", error);
+        }
+      } else if (isDateContainer && draggedItem) {
+        // Handle dropping on a day container - assign item to that date
+        console.log("Assigning item to date:", childDraggedOverItemId);
+        try {
+          await assignItemToDate({
+            id: draggedItem._id as Id<"toDoItems">,
+            date: childDraggedOverItemId,
+          });
+          console.log("Successfully assigned item to date");
+        } catch (error) {
+          console.error("Failed to assign item to date:", error);
+        }
+      } else if (
         draggedItem &&
         (draggedOverItem || childDraggedOverItemId === "child-bottom")
       ) {
@@ -145,7 +179,7 @@ export const ProjectCard = ({
     }
     setDraggedItemId(null);
     setChildDraggedOverItemId(null);
-    console.log("Finished dragging item:", id);
+    console.log("Finished dragging item in projectCard.tsx on line 154:", id);
     // You can add any additional logic here when drag ends
   };
 
@@ -183,6 +217,8 @@ export const ProjectCard = ({
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
+  const completedChildren = children?.filter((child) => child.completed);
+  const uncompletedChildren = children?.filter((child) => !child.completed);
   return (
     <div className="relative">
       <div
@@ -252,9 +288,10 @@ export const ProjectCard = ({
             }`}
           >
             {text}
-            {children && children.length > 0 && (
+            {uncompletedChildren && uncompletedChildren.length > 0 && (
               <span className="ml-2 text-xs text-purple-400/70">
-                ({children.length} item{children.length !== 1 ? "s" : ""})
+                ({uncompletedChildren.length} item
+                {uncompletedChildren.length !== 1 ? "s" : ""})
               </span>
             )}
           </span>
@@ -306,9 +343,9 @@ export const ProjectCard = ({
         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-purple-500 rounded-full"></div>
       )}
 
-      {children && children.length > 0 && isExpanded && (
+      {uncompletedChildren && uncompletedChildren.length > 0 && isExpanded && (
         <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
-          {children.map((child) => (
+          {uncompletedChildren.map((child) => (
             <ItemCard
               key={child._id}
               _id={child._id}
@@ -331,6 +368,8 @@ export const ProjectCard = ({
               type={child.type || "task"}
               draggedItemId={draggedItemId}
               setDraggedItemId={setDraggedItemId}
+              setChildDraggedOverItemId={setChildDraggedOverItemId}
+              childDraggedOverItemId={childDraggedOverItemId}
             />
           ))}
           {/* Bottom drop zone for child items */}
@@ -348,6 +387,24 @@ export const ProjectCard = ({
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
             )}
           </div>
+        </div>
+      )}
+      {completedChildren && completedChildren.length > 0 && isExpanded && (
+        <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
+          {completedChildren.map((child) => (
+            <ItemCard
+              key={child._id}
+              _id={child._id}
+              text={child.text}
+              completed={child.completed}
+              toggleComplete={() =>
+                toggleChildComplete({ id: child._id as Id<"toDoItems"> })
+              }
+              deleteItem={() =>
+                deleteChildItem({ id: child._id as Id<"toDoItems"> })
+              }
+            />
+          ))}
         </div>
       )}
     </div>

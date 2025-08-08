@@ -19,9 +19,37 @@ import CalendarScreen from "./screens/calendar";
 
 export default function Home() {
   const { isLoading, isAuthenticated } = useStoreUserEffect();
-  const [screen, setScreen] = useState<"home" | "calendar">("home");
 
+  if (!isAuthenticated) {
+    return (
+      <Unauthenticated>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center space-y-6">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold text-white">
+                Welcome to Astraea
+              </h1>
+              <p className="text-slate-300 text-lg">
+                Sign in to manage your tasks
+              </p>
+            </div>
+            <SignInButton>
+              <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors duration-200 shadow-lg">
+                Sign In
+              </button>
+            </SignInButton>
+          </div>
+        </div>
+      </Unauthenticated>
+    );
+  } else {
+    return <Content />;
+  }
+}
+function Content() {
   // Create item state and functions
+
+  const [screen, setScreen] = useState<"home" | "calendar">("home");
   const toDoItems = useQuery(api.toDoItems.get);
   const createToDoItem = useMutation(api.toDoItems.create);
   const createChild = useMutation(api.projects.createChild);
@@ -242,7 +270,7 @@ export default function Home() {
 
         {/* Main Content */}
         <main className="w-full px-8 py-8">
-          <Content
+          <PageContent
             setScreen={setScreen}
             screen={screen}
             setAdditionParentId={setAdditionParentId}
@@ -273,7 +301,7 @@ export default function Home() {
   );
 }
 
-function Content({
+function PageContent({
   setScreen,
   screen,
   setAdditionParentId,

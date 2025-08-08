@@ -41,6 +41,7 @@ export const createChild = mutation({
     const maxOrder = await ctx.db
       .query("toDoItems")
       .withIndex("by_parent", (q) => q.eq("parentId", args.parentId))
+      .filter((q) => q.eq(q.field("completed"), false))
       .collect();
     console.log("Max order:", maxOrder);
     const maxOrderNumber = maxOrder.length + 1;

@@ -66,7 +66,7 @@ export const ProjectCard = ({
   };
   const handleDragEnd = async (id: string) => {
     if (childDraggedOverItemId) {
-      console.log("Finished dragging item:", id);
+      console.log("Finished dragging item in projectCard.tsx on line 69:", id);
       const draggedItem = children?.find((item) => item._id === draggedItemId);
       const draggedOverItem = children?.find(
         (item) => item._id === childDraggedOverItemId
@@ -167,6 +167,8 @@ export const ProjectCard = ({
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
+  const completedChildren = children?.filter((child) => child.completed);
+  const uncompletedChildren = children?.filter((child) => !child.completed);
   return (
     <div className="relative">
       <div
@@ -236,9 +238,10 @@ export const ProjectCard = ({
             }`}
           >
             {text}
-            {children && children.length > 0 && (
+            {uncompletedChildren && uncompletedChildren.length > 0 && (
               <span className="ml-2 text-xs text-purple-400/70">
-                ({children.length} item{children.length !== 1 ? "s" : ""})
+                ({uncompletedChildren.length} item
+                {uncompletedChildren.length !== 1 ? "s" : ""})
               </span>
             )}
           </span>
@@ -290,9 +293,9 @@ export const ProjectCard = ({
         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-purple-500 rounded-full"></div>
       )}
 
-      {children && children.length > 0 && isExpanded && (
+      {uncompletedChildren && uncompletedChildren.length > 0 && isExpanded && (
         <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
-          {children.map((child) => (
+          {uncompletedChildren.map((child) => (
             <ItemCard
               key={child._id}
               _id={child._id}
@@ -330,6 +333,24 @@ export const ProjectCard = ({
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
             )}
           </div>
+        </div>
+      )}
+      {completedChildren && completedChildren.length > 0 && isExpanded && (
+        <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
+          {completedChildren.map((child) => (
+            <ItemCard
+              key={child._id}
+              _id={child._id}
+              text={child.text}
+              completed={child.completed}
+              toggleComplete={() =>
+                toggleChildComplete({ id: child._id as Id<"toDoItems"> })
+              }
+              deleteItem={() =>
+                deleteChildItem({ id: child._id as Id<"toDoItems"> })
+              }
+            />
+          ))}
         </div>
       )}
     </div>

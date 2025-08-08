@@ -19,6 +19,9 @@ interface ItemCardProps {
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  childDraggedItemId: string | null;
 }
 
 export const ItemCard = ({ type, ...props }: ItemCardProps) => {
