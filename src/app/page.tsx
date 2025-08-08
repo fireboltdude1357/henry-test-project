@@ -9,6 +9,7 @@ import {
   Unauthenticated,
   AuthLoading,
   useQuery,
+  useConvexAuth,
 } from "convex/react";
 
 import { useStoreUserEffect } from "../useStoreUserEffect";

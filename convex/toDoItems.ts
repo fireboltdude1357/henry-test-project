@@ -361,7 +361,11 @@ export const getItemsByDate = query({
 export const assignItemToDate = mutation({
   args: {
     id: v.id("toDoItems"),
-    date: v.string(), // ISO date string (YYYY-MM-DD)
+    // "date" can be either an ISO date string (YYYY-MM-DD) or
+    // a concatenation of date + toDoItemId to indicate insertion
+    // before a specific item for precise ordering within a day.
+    // Example: "2025-01-13k3x9f2..." → date: 2025-01-13, beforeId: k3x9f2...
+    date: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -384,7 +388,15 @@ export const assignItemToDate = mutation({
     if (item.userId !== userId._id) {
       throw new Error("To-do item does not belong to user");
     }
-    if (item.assignedDate && item.assignedDate !== args.date) {
+    // Parse date and optional beforeId from the incoming string.
+    const dateStr = args.date.substring(0, 10);
+    const maybeBeforeId: Id<"toDoItems"> | undefined =
+      args.date.length > 10
+        ? (args.date.substring(10) as Id<"toDoItems">)
+        : undefined;
+
+    // If the item was previously assigned to a different date, remove it from that day
+    if (item.assignedDate && item.assignedDate !== dateStr) {
       // Remove item from old calendar day
       const oldCalendarDay = await ctx.db
         .query("calendarDays")
@@ -402,23 +414,36 @@ export const assignItemToDate = mutation({
     const existingCalendarDay = await ctx.db
       .query("calendarDays")
       .withIndex("by_user_and_date", (q) =>
-        q.eq("userId", userId._id).eq("date", args.date)
+        q.eq("userId", userId._id).eq("date", dateStr)
       )
       .unique();
 
     if (existingCalendarDay) {
-      // Update existing calendar day
-      await ctx.db.patch(existingCalendarDay._id, {
-        items: [...existingCalendarDay.items, args.id],
-      });
+      // Build new ordered items array, removing any prior occurrence first
+      let newItems = existingCalendarDay.items.filter((id) => id !== args.id);
+      if (maybeBeforeId) {
+        const insertBeforeIndex = newItems.findIndex(
+          (id) => id === maybeBeforeId
+        );
+        const boundedIndex =
+          insertBeforeIndex >= 0 ? insertBeforeIndex : newItems.length;
+        newItems = [
+          ...newItems.slice(0, boundedIndex),
+          args.id,
+          ...newItems.slice(boundedIndex),
+        ];
+      } else {
+        newItems.push(args.id);
+      }
+      await ctx.db.patch(existingCalendarDay._id, { items: newItems });
     } else {
       // Create new calendar day
       await ctx.db.insert("calendarDays", {
-        date: args.date,
+        date: dateStr,
         items: [args.id],
         userId: userId._id,
       });
     }
-    return await ctx.db.patch(args.id, { assignedDate: args.date });
+    return await ctx.db.patch(args.id, { assignedDate: dateStr });
   },
 });

@@ -1,18 +1,20 @@
-import { TaskCard } from "@/components/itemCards/home/taskCard";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
 import { CalendarItemDisplay } from "@/components/displayItems/calendarDisplay";
-import { Authenticated } from "convex/react";
+import { Authenticated, useConvexAuth } from "convex/react";
 import CalendarDay from "@/components/calendarDay";
 
 export default function CalendarScreen() {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const { isAuthenticated } = useConvexAuth();
+  // Local view state
   const [numDays, setNumDays] = useState<number>(3);
   const [startDate, setStartDate] = useState<Date>(new Date());
-  const toDoItems = useQuery(api.toDoItems.get);
+  const toDoItems = useQuery(
+    api.toDoItems.get,
+    isAuthenticated ? {} : undefined
+  );
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
@@ -44,27 +46,7 @@ export default function CalendarScreen() {
     return date.toISOString().split("T")[0];
   };
 
-  // Query items for the date range
-  const items = useQuery(api.toDoItems.getItemsByDateRange, {
-    startDate: formatDateForAPI(dateRange[0]),
-    endDate: formatDateForAPI(dateRange[dateRange.length - 1]),
-  });
-
-  // Group items by date
-  const itemsByDate = useMemo(() => {
-    if (!items) return {};
-
-    const grouped: { [key: string]: typeof items } = {};
-    items.forEach((item) => {
-      if (item.assignedDate) {
-        if (!grouped[item.assignedDate]) {
-          grouped[item.assignedDate] = [];
-        }
-        grouped[item.assignedDate].push(item);
-      }
-    });
-    return grouped;
-  }, [items]);
+  // Each day fetches its own data; no range query required here
 
   // Navigation functions
   const goToPreviousDays = () => {
@@ -105,9 +87,7 @@ export default function CalendarScreen() {
     });
   };
 
-  const getDayOfWeek = (date: Date) => {
-    return date.toLocaleDateString("en-US", { weekday: "long" });
-  };
+  // getDayOfWeek left intentionally unused for now
 
   const handleDragStart = (id: string) => {
     setDraggedItemId(id);
@@ -123,13 +103,14 @@ export default function CalendarScreen() {
       console.log("Finished dragging item in calendar.tsx on line 115:", id);
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
+      const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(draggedOverItemId);
 
       console.log("Drag end - draggedItemId:", draggedItemId);
       console.log("Drag end - draggedOverItemId:", draggedOverItemId);
       console.log("Drag end - isDateContainer:", isDateContainer);
       console.log("Drag end - draggedItem:", draggedItem);
 
-      if (isDateContainer && draggedItem) {
+      if ((isDateContainer || isDateItem) && draggedItem) {
         // Handle dropping on a day container - assign item to that date
         console.log("Assigning item to date:", draggedOverItemId);
         try {
@@ -205,6 +186,7 @@ export default function CalendarScreen() {
   };
 
   const handleDragOver = (id: string, e: React.DragEvent) => {
+    e.preventDefault();
     console.log("id:", id);
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
@@ -238,10 +220,9 @@ export default function CalendarScreen() {
         setDraggedOverItemId(id);
         console.log("Dragging over day:", id);
       } else if (isDateItem) {
-        // Extract the date part from the date item ID (first 10 characters: YYYY-MM-DD)
-        const dateStr = id.substring(0, 10);
-        setDraggedOverItemId(dateStr);
-        console.log("Dragging over date item, treating as day:", dateStr);
+        // Keep the full id (date + beforeId) so the server can insert before the target item
+        setDraggedOverItemId(id);
+        console.log("Dragging over date item (will insert before):", id);
       } else if (id === "bottom") {
         setDraggedOverItemId(id);
         console.log("Dragging over bottom");
@@ -416,42 +397,23 @@ export default function CalendarScreen() {
                         : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
                 }`}
               >
-                {dateRange.map((date, index) => {
-                  const dateStr = formatDateForAPI(date);
-                  const dayItems = itemsByDate[dateStr] || [];
-                  const isToday =
-                    date.toDateString() === new Date().toDateString();
-                  const completedCount = dayItems.filter(
-                    (item) => item.completed
-                  ).length;
-                  const totalCount = dayItems.length;
-
-                  return (
-                    <CalendarDay
-                      key={dateStr}
-                      date={dateStr}
-                      draggedOverItemId={draggedOverItemId}
-                      setDraggedOverItemId={setDraggedOverItemId}
-                      draggedItemId={draggedItemId}
-                      setDraggedItemId={setDraggedItemId}
-                      setChildDraggedOverItemId={setChildDraggedOverItemId}
-                      childDraggedOverItemId={childDraggedOverItemId}
-                      childDraggedItemId={childDraggedItemId}
-                      setChildDraggedItemId={setChildDraggedItemId}
-                    />
-                  );
-                })}
+                {dateRange.map((date) => (
+                  <CalendarDay
+                    key={formatDateForAPI(date)}
+                    date={formatDateForAPI(date)}
+                    draggedOverItemId={draggedOverItemId}
+                    setDraggedOverItemId={setDraggedOverItemId}
+                    draggedItemId={draggedItemId}
+                    setDraggedItemId={setDraggedItemId}
+                    setChildDraggedOverItemId={setChildDraggedOverItemId}
+                    childDraggedOverItemId={childDraggedOverItemId}
+                    childDraggedItemId={childDraggedItemId}
+                    setChildDraggedItemId={setChildDraggedItemId}
+                  />
+                ))}
               </div>
 
-              {/* Loading state */}
-              {items === undefined && (
-                <div className="text-center py-12">
-                  <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-700 rounded-full mb-4">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                  <div className="text-slate-400">Loading tasks...</div>
-                </div>
-              )}
+              {/* Loading state — individual days load their data */}
             </div>
           </div>
         </div>

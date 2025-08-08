@@ -1,9 +1,7 @@
-import { TaskCard } from "@/components/itemCards/home/taskCard";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState, useEffect, useMemo } from "react";
+// no local state needed currently
 import { Id } from "../../convex/_generated/dataModel";
-import { CalendarItemDisplay } from "@/components/displayItems/calendarDisplay";
 
 export default function CalendarDay({
   date,
@@ -12,8 +10,6 @@ export default function CalendarDay({
   setDraggedOverItemId,
   setDraggedItemId,
   setChildDraggedOverItemId,
-  childDraggedOverItemId,
-  childDraggedItemId,
   setChildDraggedItemId,
 }: {
   date: string;
@@ -22,14 +18,13 @@ export default function CalendarDay({
   setDraggedOverItemId: (id: string | null) => void;
   setDraggedItemId: (id: string | null) => void;
   setChildDraggedOverItemId: (id: string | null) => void;
-  childDraggedOverItemId: string | null;
-  childDraggedItemId: string | null;
+  childDraggedOverItemId?: string | null;
+  childDraggedItemId?: string | null;
   setChildDraggedItemId: (id: string | null) => void;
 }) {
   // console.log("date:", date);
   // console.log("draggedOverItemId:", draggedOverItemId);
-  const [numDays, setNumDays] = useState<number>(3);
-  const [startDate, setStartDate] = useState<Date>(new Date());
+  // local view state not used here
   const calendarDayData = useQuery(api.calendarDays.get, {
     date: date,
   });
@@ -37,9 +32,13 @@ export default function CalendarDay({
   const calendarDay = calendarDayData?.day;
   const dayItems = calendarDayData?.items;
   // console.log("calendarDay:", calendarDayData);
-  const toDoItems = useQuery(api.toDoItems.get);
+  const { isAuthenticated } = useConvexAuth();
+  const toDoItems = useQuery(
+    api.toDoItems.get,
+    isAuthenticated ? {} : undefined
+  );
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
-  const deleteItem = useMutation(api.toDoItems.deleteItem);
+  // const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
   // const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -50,26 +49,14 @@ export default function CalendarDay({
   const totalCount = calendarDay?.items.length || 0;
 
   // Format date to YYYY-MM-DD string for API
-  const formatDateForAPI = (date: Date) => {
-    return date.toISOString().split("T")[0];
-  };
+  // const formatDateForAPI = (date: Date) => date.toISOString().split("T")[0];
 
   // Navigation functions
-  const goToPreviousDays = () => {
-    const newStartDate = new Date(startDate);
-    newStartDate.setDate(startDate.getDate() - numDays);
-    setStartDate(newStartDate);
-  };
+  // const goToPreviousDays = () => {};
 
-  const goToNextDays = () => {
-    const newStartDate = new Date(startDate);
-    newStartDate.setDate(startDate.getDate() + numDays);
-    setStartDate(newStartDate);
-  };
+  // const goToNextDays = () => {};
 
-  const goToToday = () => {
-    setStartDate(new Date());
-  };
+  // const goToToday = () => {};
 
   // Format date for display
   const formatDateForDisplay = (date: Date) => {
@@ -97,26 +84,24 @@ export default function CalendarDay({
     return date.toLocaleDateString("en-US", { weekday: "long" });
   };
 
-  const handleDragStart = (id: string) => {
-    setDraggedOverItemId(id);
-    // console.log("Started dragging item:", id);
-    // You can add any additional logic here when drag starts
-  };
+  // const handleDragStart = (_id: string) => {};
 
-  const handleDragEnd = async (id: string) => {
+  // central drag-end handled in parent
+  const handleDragEnd = async () => {
     console.log("================================================");
     console.log("draggedOverItemId", draggedOverItemId);
     if (draggedOverItemId) {
-      console.log("Finished dragging item in calendar.tsx on line 115:", id);
+      console.log("Finished dragging item in calendar.tsx on line 115");
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
+      const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(draggedOverItemId);
 
       console.log("Drag end - draggedItemId:", draggedItemId);
       console.log("Drag end - draggedOverItemId:", draggedOverItemId);
       console.log("Drag end - isDateContainer:", isDateContainer);
       console.log("Drag end - draggedItem:", draggedItem);
 
-      if (isDateContainer && draggedItem) {
+      if ((isDateContainer || isDateItem) && draggedItem) {
         // Handle dropping on a day container - assign item to that date
         console.log("Assigning item to date:", draggedOverItemId);
         try {
@@ -194,10 +179,27 @@ export default function CalendarDay({
     }
     setDraggedItemId(null);
     setDraggedOverItemId(null);
-    console.log("Finished dragging item in calendar.tsx on line 196:", id);
+    console.log("Finished dragging item in calendar.tsx on line 196");
   };
 
-  const handleDragOver = (id: string, e: React.DragEvent) => {
+  // Explicit drop handler on day or day-item targets to ensure finalization
+  const handleDropOnDay = async (targetToken: string) => {
+    if (!draggedItemId) return;
+    const draggedItem = toDoItems?.find((i) => i._id === draggedItemId);
+    if (!draggedItem) return;
+
+    try {
+      await assignItemToDate({
+        id: draggedItem._id as Id<"toDoItems">,
+        date: targetToken,
+      });
+    } finally {
+      setDraggedItemId(null);
+      setDraggedOverItemId(null);
+    }
+  };
+
+  const handleDragOver = (id: string) => {
     console.log("id:", id);
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("HANDLING DRAG OVER IN CALENDAR.TSX");
@@ -210,8 +212,13 @@ export default function CalendarDay({
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
       // Check if it's a date item (date string followed by Convex ID)
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(id);
+      // Explicit top/bottom tokens
+      const isDateBottom = /^\d{4}-\d{2}-\d{2}-bottom$/.test(id);
+      const isDateTop = /^\d{4}-\d{2}-\d{2}-top$/.test(id);
       console.log("isDateContainer", isDateContainer);
       console.log("isDateItem", isDateItem);
+      console.log("isDateBottom", isDateBottom);
+      console.log("isDateTop", isDateTop);
       console.log("draggedItemId", draggedItemId);
 
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
@@ -226,15 +233,29 @@ export default function CalendarDay({
         console.log("Setting childDraggedOverItemId to null");
       }
 
-      if (isDateContainer) {
-        // Allow dragging over day containers (works for all items, including nested ones)
-        setDraggedOverItemId(id);
-        console.log("Dragging over day:", id);
-      } else if (isDateItem) {
-        // Extract the date part from the date item ID (first 10 characters: YYYY-MM-DD)
+      if (isDateBottom || isDateTop) {
+        // Always coerce to the bare date so the day is the active drop target
         const dateStr = id.substring(0, 10);
         setDraggedOverItemId(dateStr);
-        console.log("Dragging over date item, treating as day:", dateStr);
+        console.log("Dragging over day edge (forcing day target):", dateStr);
+      } else if (isDateContainer) {
+        // Only set to bare date if we're moving between different days.
+        // If we're in the same day and previously had a precise target (date+id), keep it.
+        const previous = draggedOverItemId;
+        const prevIsDateItem = previous
+          ? /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(previous)
+          : false;
+        const prevDate = previous ? previous.substring(0, 10) : undefined;
+        if (!prevIsDateItem || prevDate !== id) {
+          setDraggedOverItemId(id);
+          console.log("Dragging over day (updated):", id);
+        } else {
+          console.log("Dragging over day (kept precise target):", previous);
+        }
+      } else if (isDateItem) {
+        // Keep full token so server can insert before specific item
+        setDraggedOverItemId(id);
+        console.log("Dragging over date item (will insert before):", id);
       } else if (id === "bottom") {
         setDraggedOverItemId(id);
         console.log("Dragging over bottom");
@@ -286,7 +307,23 @@ export default function CalendarDay({
         onDragOver={(e) => {
           e.preventDefault();
           //   e.stopPropagation();
-          handleDragOver(date, e);
+          handleDragOver(date);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const token =
+            draggedOverItemId &&
+            draggedOverItemId.startsWith(date) &&
+            draggedOverItemId.length > 10
+              ? draggedOverItemId
+              : date;
+          console.log("Dropping on day container:", {
+            date,
+            draggedOverItemId,
+            token,
+          });
+          handleDropOnDay(token);
         }}
         onDragEnter={(e) => {
           e.stopPropagation();
@@ -297,15 +334,29 @@ export default function CalendarDay({
           handleDragLeave(date);
         }}
         className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
-          isToday
-            ? "border-blue-500 shadow-blue-500/20"
-            : draggedOverItemId === date
-              ? "border-green-500 bg-green-500/10 shadow-green-500/20"
+          draggedOverItemId === date ||
+          draggedOverItemId === `${date}-bottom` ||
+          draggedOverItemId === `${date}-top`
+            ? "border-green-500 bg-green-500/10 shadow-green-500/20"
+            : isToday
+              ? "border-blue-500 shadow-blue-500/20"
               : "border-slate-700/50 hover:border-slate-600"
         }`}
       >
         {/* Day Header */}
-        <div className="p-6 pb-4 border-b border-slate-700/50">
+        <div
+          className="p-6 pb-4 border-b border-slate-700/50"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDragOver(`${date}-top`);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleDropOnDay(date);
+          }}
+        >
           <div className="flex items-center justify-between mb-2">
             <div
               className={`text-xl font-bold ${
@@ -354,14 +405,19 @@ export default function CalendarDay({
               dayItems.map((item) => (
                 <div
                   key={date + item?._id}
-                  className={`bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
+                  className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
                     item?.completed
                       ? "border-green-500/30 bg-green-500/5"
                       : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    handleDragOver(date + item?._id, e);
+                    handleDragOver(date + item?._id);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDropOnDay(date + String(item?._id));
                   }}
                   onDragEnter={(e) => {
                     e.stopPropagation();
@@ -370,7 +426,41 @@ export default function CalendarDay({
                     e.stopPropagation();
                   }}
                 >
-                  <div className="flex items-start gap-3">
+                  <div
+                    className="flex items-start gap-3"
+                    draggable
+                    // Reduce drag delay on desktop by starting drag immediately
+                    onMouseDown={(e) => {
+                      // For desktop browsers, initiate drag quickly
+                      const target = e.currentTarget as HTMLElement;
+                      // small timeout to ensure draggable is engaged without long press
+                      target.draggable = true;
+                    }}
+                    onDragStart={(e) => {
+                      // mark this specific day item as the target for between-task insertion
+                      // we encode as `${date}${item._id}` so server can parse date + beforeId
+                      e.dataTransfer.setData("text/plain", String(item?._id));
+                      setDraggedItemId(String(item?._id));
+                    }}
+                    onDragEnd={() => {
+                      // finalize drop: assign to new day or reorder active list depending on draggedOverItemId
+                      handleDragEnd();
+                    }}
+                    onDragOver={(e) => {
+                      // Allow dropping before this specific item
+                      e.preventDefault();
+                      handleDragOver(date + String(item?._id));
+                    }}
+                    onDragEnter={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onDragLeave={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    {draggedOverItemId === date + String(item?._id) && (
+                      <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
+                    )}
                     <input
                       type="checkbox"
                       checked={item?.completed}
@@ -417,6 +507,22 @@ export default function CalendarDay({
                 <div className="text-slate-500 text-sm">No tasks scheduled</div>
               </div>
             )}
+            {/* Bottom drop zone to append at end of day */}
+            <div
+              id={`${date}-bottom`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                handleDragOver(`${date}-bottom`);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleDropOnDay(date);
+              }}
+              className="h-6 w-full relative"
+            >
+              {/* No line highlight here; the entire day container turns green when hovering bottom */}
+            </div>
           </div>
 
           {/* Add task button */}

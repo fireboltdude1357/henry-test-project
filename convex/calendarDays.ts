@@ -41,14 +41,15 @@ export const get = query({
         .filter((q) => q.eq(q.field("assignedDate"), args.date))
         .collect();
     }
-    const calendarEvents = toDoItems
-      .filter((item): item is NonNullable<typeof item> => item !== null)
-      .sort((a, b) => {
-        if (a.type === "project" && b.type !== "project") return -1;
-        if (a.type !== "project" && b.type === "project") return 1;
-        return 0;
-      });
-    console.log("toDoItems:", toDoItems);
+    // Strictly honor day.items order (no extra sorting) to avoid snap-back
+    toDoItems = toDoItems.filter(
+      (item): item is NonNullable<typeof item> => item !== null
+    );
+    console.log("calendarDays:get -> day.items order:", day?.items);
+    console.log(
+      "calendarDays:get -> toDoItems in order:",
+      toDoItems.map((i) => ({ id: i._id, type: i.type, text: i.text }))
+    );
     return {
       items: toDoItems,
       day: day,
