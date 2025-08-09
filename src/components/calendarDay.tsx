@@ -2,6 +2,300 @@ import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../convex/_generated/api";
 // no local state needed currently
 import { Id } from "../../convex/_generated/dataModel";
+import { useState } from "react";
+
+type ToDoItemType = "project" | "task" | "folder" | undefined;
+
+function ProjectChildren({
+  parentId,
+  draggedItemId,
+  setDraggedItemId,
+  childDraggedOverItemId,
+  setChildDraggedOverItemId,
+  setChildDraggedItemId,
+}: {
+  parentId: Id<"toDoItems">;
+  draggedItemId: string | null;
+  setDraggedItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  setChildDraggedItemId: (id: string | null) => void;
+}) {
+  const children = useQuery(api.projects.getByParentId, { parentId });
+  const updateOrder = useMutation(api.toDoItems.updateOrder);
+  const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
+  const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
+  if (!children) return null;
+  const visibleChildren = children.filter(() => true);
+  return (
+    <div
+      className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4"
+      onDragLeave={() => setChildDraggedOverItemId(null)}
+    >
+      {visibleChildren.map((child) => (
+        <div
+          key={child._id}
+          className="relative text-sm text-slate-300 flex items-center gap-2 bg-slate-700/40 rounded-md px-2 py-1 border border-slate-600/50"
+          draggable
+          onDragStart={() => {
+            setDraggedItemId(child._id);
+            setChildDraggedItemId(child._id);
+          }}
+          onDragEnd={async () => {
+            const isDateToken =
+              !!childDraggedOverItemId &&
+              /\d{4}-\d{2}-\d{2}/.test(childDraggedOverItemId);
+            const dragged = children?.find((c) => c._id === draggedItemId);
+            const overChild = children?.find(
+              (c) => c._id === childDraggedOverItemId
+            );
+            if (dragged) {
+              if (isDateToken) {
+                await assignItemToDate({
+                  id: dragged._id as Id<"toDoItems">,
+                  date: childDraggedOverItemId!,
+                });
+              } else if (
+                overChild ||
+                childDraggedOverItemId === "child-bottom"
+              ) {
+                let movingItemNewOrder = overChild?.mainOrder || 0;
+                const maxOrder = (children?.length || 0) + 1;
+                const movingItemOldOrder =
+                  dragged.mainOrder || movingItemNewOrder;
+                if (childDraggedOverItemId === "child-bottom") {
+                  movingItemNewOrder = maxOrder;
+                }
+                const difference = movingItemNewOrder - movingItemOldOrder;
+                let interval = 0;
+                if (difference > 0) {
+                  interval = 1;
+                  movingItemNewOrder = movingItemNewOrder - 1;
+                } else {
+                  interval = -1;
+                }
+                for (
+                  let i = movingItemOldOrder + interval;
+                  i !== movingItemNewOrder + interval;
+                  i += interval
+                ) {
+                  const itemAt = children?.find(
+                    (i2) => (i2.mainOrder ?? -1) === i
+                  );
+                  if (itemAt) {
+                    await updateOrder({
+                      id: itemAt._id as Id<"toDoItems">,
+                      order: (itemAt.mainOrder ?? 0) - interval,
+                    });
+                  }
+                }
+                await updateOrder({
+                  id: dragged._id as Id<"toDoItems">,
+                  order: movingItemNewOrder,
+                });
+              }
+            }
+            setDraggedItemId(null);
+            setChildDraggedItemId(null);
+            setChildDraggedOverItemId(null);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (
+              draggedItemId &&
+              draggedItemId !== child._id &&
+              childDraggedOverItemId !== child._id
+            ) {
+              setChildDraggedOverItemId(child._id);
+            }
+          }}
+          onDragLeave={() => {
+            if (childDraggedOverItemId === child._id)
+              setChildDraggedOverItemId(null);
+          }}
+        >
+          {childDraggedOverItemId === child._id && (
+            <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full" />
+          )}
+          <div
+            className={`w-2 h-2 rounded-full ${
+              (child.type as ToDoItemType) === "project"
+                ? "bg-purple-500"
+                : (child.type as ToDoItemType) === "task"
+                  ? "bg-blue-500"
+                  : "bg-yellow-500"
+            }`}
+          />
+          <input
+            type="checkbox"
+            checked={child.completed}
+            onChange={() =>
+              toggleChildComplete({ id: child._id as Id<"toDoItems"> })
+            }
+            className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
+          />
+          <span className={child.completed ? "line-through opacity-70" : ""}>
+            {child.text}
+          </span>
+        </div>
+      ))}
+      {/* Bottom zone for child list */}
+      <div
+        id="child-bottom"
+        onDragOver={(e) => {
+          e.preventDefault();
+          setChildDraggedOverItemId("child-bottom");
+        }}
+        className="h-2"
+      >
+        {childDraggedOverItemId === "child-bottom" && (
+          <div className="h-[3px] bg-blue-500 rounded-full" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProjectDayItem({
+  item,
+  date,
+  onDragOver,
+  onDrop,
+  onDragStart,
+  onDragEnd,
+  toggleComplete,
+  draggedItemId,
+  setDraggedItemId,
+  childDraggedOverItemId,
+  setChildDraggedOverItemId,
+  setChildDraggedItemId,
+}: {
+  item: {
+    _id: string;
+    text: string;
+    completed: boolean;
+    type?: ToDoItemType;
+  };
+  date: string;
+  onDragOver: (id: string) => void;
+  onDrop: (token: string) => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  toggleComplete: (id: Id<"toDoItems">) => void;
+  draggedItemId: string | null;
+  setDraggedItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  setChildDraggedItemId: (id: string | null) => void;
+}) {
+  // Local state for child drag interactions within this project
+  const [localChildDraggedOverId, setLocalChildDraggedOverId] = useState<
+    string | null
+  >(null);
+  const [localChildDraggedId, setLocalChildDraggedId] = useState<string | null>(
+    null
+  );
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div
+      className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
+        item?.completed
+          ? "border-green-500/30 bg-green-500/5"
+          : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
+      }`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOver(date + item?._id);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDrop(date + String(item?._id));
+      }}
+      onDragEnter={(e) => {
+        e.stopPropagation();
+      }}
+      onDragLeave={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      <div
+        className="flex items-start gap-3"
+        draggable
+        onMouseDown={(e) => {
+          (e.currentTarget as HTMLElement).draggable = true;
+        }}
+        onDragStart={() => {
+          onDragStart(String(item?._id));
+        }}
+        onDragEnd={() => onDragEnd()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          onDragOver(date + String(item?._id));
+        }}
+        onDragEnter={(e) => {
+          e.stopPropagation();
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation();
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={item?.completed}
+          onChange={() => {
+            if (item?._id) toggleComplete(item._id as Id<"toDoItems">);
+          }}
+          className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+        />
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
+          title={expanded ? "Collapse" : "Expand"}
+        >
+          <svg
+            className={`w-4 h-4 mr-1 transition-transform duration-200 ${
+              expanded ? "rotate-90" : "rotate-0"
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0">
+          <div
+            className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"}`}
+          >
+            {item?.text}
+          </div>
+          {item?.type && (
+            <div className="flex items-center gap-1 mt-1">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span className="text-xs text-slate-400 capitalize">Project</span>
+            </div>
+          )}
+        </div>
+      </div>
+      {expanded && (
+        <ProjectChildren
+          parentId={item._id as Id<"toDoItems">}
+          draggedItemId={draggedItemId}
+          setDraggedItemId={setDraggedItemId}
+          childDraggedOverItemId={localChildDraggedOverId}
+          setChildDraggedOverItemId={setLocalChildDraggedOverId}
+          setChildDraggedItemId={setLocalChildDraggedId}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function CalendarDay({
   date,
@@ -18,8 +312,8 @@ export default function CalendarDay({
   setDraggedOverItemId: (id: string | null) => void;
   setDraggedItemId: (id: string | null) => void;
   setChildDraggedOverItemId: (id: string | null) => void;
-  childDraggedOverItemId?: string | null;
-  childDraggedItemId?: string | null;
+  childDraggedOverItemId?: string | null; // not used here
+  childDraggedItemId?: string | null; // not used here
   setChildDraggedItemId: (id: string | null) => void;
 }) {
   // console.log("date:", date);
@@ -402,54 +696,39 @@ export default function CalendarDay({
         <div className="p-6 pt-4">
           <div className="space-y-3 mb-4">
             {dayItems && dayItems.length > 0 ? (
-              dayItems.map((item) => (
-                <div
-                  key={date + item?._id}
-                  className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
-                    item?.completed
-                      ? "border-green-500/30 bg-green-500/5"
-                      : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
-                  }`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    handleDragOver(date + item?._id);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDropOnDay(date + String(item?._id));
-                  }}
-                  onDragEnter={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onDragLeave={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
+              dayItems.map((item) =>
+                item?.type === "project" || item?.type === "folder" ? (
+                  <ProjectDayItem
+                    key={date + item?._id}
+                    item={item}
+                    date={date}
+                    onDragOver={(token) => handleDragOver(token)}
+                    onDrop={(token) => handleDropOnDay(token)}
+                    onDragStart={(id) => setDraggedItemId(id)}
+                    onDragEnd={() => handleDragEnd()}
+                    toggleComplete={(id) => toggleComplete({ id })}
+                    draggedItemId={draggedItemId}
+                    setDraggedItemId={setDraggedItemId}
+                    childDraggedOverItemId={null}
+                    setChildDraggedOverItemId={() => {}}
+                    setChildDraggedItemId={() => {}}
+                  />
+                ) : (
                   <div
-                    className="flex items-start gap-3"
-                    draggable
-                    // Reduce drag delay on desktop by starting drag immediately
-                    onMouseDown={(e) => {
-                      // For desktop browsers, initiate drag quickly
-                      const target = e.currentTarget as HTMLElement;
-                      // small timeout to ensure draggable is engaged without long press
-                      target.draggable = true;
-                    }}
-                    onDragStart={(e) => {
-                      // mark this specific day item as the target for between-task insertion
-                      // we encode as `${date}${item._id}` so server can parse date + beforeId
-                      e.dataTransfer.setData("text/plain", String(item?._id));
-                      setDraggedItemId(String(item?._id));
-                    }}
-                    onDragEnd={() => {
-                      // finalize drop: assign to new day or reorder active list depending on draggedOverItemId
-                      handleDragEnd();
-                    }}
+                    key={date + item?._id}
+                    className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
+                      item?.completed
+                        ? "border-green-500/30 bg-green-500/5"
+                        : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
+                    }`}
                     onDragOver={(e) => {
-                      // Allow dropping before this specific item
                       e.preventDefault();
-                      handleDragOver(date + String(item?._id));
+                      handleDragOver(date + item?._id);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDropOnDay(date + String(item?._id));
                     }}
                     onDragEnter={(e) => {
                       e.stopPropagation();
@@ -458,49 +737,82 @@ export default function CalendarDay({
                       e.stopPropagation();
                     }}
                   >
-                    {draggedOverItemId === date + String(item?._id) && (
-                      <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
-                    )}
-                    <input
-                      type="checkbox"
-                      checked={item?.completed}
-                      onChange={() => {
-                        if (item?._id) {
-                          toggleComplete({ id: item._id as Id<"toDoItems"> });
-                        }
+                    <div
+                      className="flex items-start gap-3"
+                      draggable
+                      // Reduce drag delay on desktop by starting drag immediately
+                      onMouseDown={(e) => {
+                        // For desktop browsers, initiate drag quickly
+                        const target = e.currentTarget as HTMLElement;
+                        // small timeout to ensure draggable is engaged without long press
+                        target.draggable = true;
                       }}
-                      className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div
-                        className={`text-sm font-medium ${
-                          item?.completed
-                            ? "line-through text-slate-400"
-                            : "text-white"
-                        }`}
-                      >
-                        {item?.text}
-                      </div>
-                      {item?.type && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <div
-                            className={`w-2 h-2 rounded-full ${
-                              item?.type === "project"
-                                ? "bg-purple-500"
-                                : item?.type === "task"
-                                  ? "bg-blue-500"
-                                  : "bg-yellow-500"
-                            }`}
-                          ></div>
-                          <span className="text-xs text-slate-400 capitalize">
-                            {item?.type}
-                          </span>
-                        </div>
+                      onDragStart={(e) => {
+                        // mark this specific day item as the target for between-task insertion
+                        // we encode as `${date}${item._id}` so server can parse date + beforeId
+                        e.dataTransfer.setData("text/plain", String(item?._id));
+                        setDraggedItemId(String(item?._id));
+                      }}
+                      onDragEnd={() => {
+                        // finalize drop: assign to new day or reorder active list depending on draggedOverItemId
+                        handleDragEnd();
+                      }}
+                      onDragOver={(e) => {
+                        // Allow dropping before this specific item
+                        e.preventDefault();
+                        handleDragOver(date + String(item?._id));
+                      }}
+                      onDragEnter={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onDragLeave={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      {draggedOverItemId === date + String(item?._id) && (
+                        <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
                       )}
+                      <input
+                        type="checkbox"
+                        checked={item?.completed}
+                        onChange={() => {
+                          if (item?._id) {
+                            toggleComplete({ id: item._id as Id<"toDoItems"> });
+                          }
+                        }}
+                        className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div
+                          className={`text-sm font-medium ${
+                            item?.completed
+                              ? "line-through text-slate-400"
+                              : "text-white"
+                          }`}
+                        >
+                          {item?.text}
+                        </div>
+                        {item?.type && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                (item?.type as ToDoItemType) === "project"
+                                  ? "bg-purple-500"
+                                  : (item?.type as ToDoItemType) === "task"
+                                    ? "bg-blue-500"
+                                    : "bg-yellow-500"
+                              }`}
+                            ></div>
+                            <span className="text-xs text-slate-400 capitalize">
+                              {item?.type}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                )
+              )
             ) : (
               <div className="text-center py-12">
                 <div className="text-4xl mb-3 opacity-50">📅</div>
