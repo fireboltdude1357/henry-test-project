@@ -180,6 +180,7 @@ function ProjectDayItem({
   toggleComplete,
   draggedItemId,
   setDraggedItemId,
+  isDraggingChild,
 }: {
   item: {
     _id: string;
@@ -195,6 +196,7 @@ function ProjectDayItem({
   toggleComplete: (id: Id<"toDoItems">) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  isDraggingChild: boolean;
 }) {
   // Local state for child drag interactions within this project
   const [localChildDraggedOverId, setLocalChildDraggedOverId] = useState<
@@ -211,18 +213,20 @@ function ProjectDayItem({
       }`}
       onDragOver={(e) => {
         e.preventDefault();
+        // Always forward to day-level logic when hovering project container
         onDragOver(date + item?._id);
       }}
       onDrop={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // Always allow placing before this project at day level
         onDrop(date + String(item?._id));
       }}
       onDragEnter={(e) => {
-        e.stopPropagation();
+        if (isDraggingChild) e.stopPropagation();
       }}
       onDragLeave={(e) => {
-        e.stopPropagation();
+        if (isDraggingChild) e.stopPropagation();
       }}
     >
       <div
@@ -237,15 +241,21 @@ function ProjectDayItem({
         onDragEnd={() => onDragEnd()}
         onDragOver={(e) => {
           e.preventDefault();
-          onDragOver(date + String(item?._id));
+          if (isDraggingChild) {
+            e.stopPropagation();
+            setLocalChildDraggedOverId("child-bottom");
+          } else {
+            onDragOver(date + String(item?._id));
+          }
         }}
         onDragEnter={(e) => {
-          e.stopPropagation();
+          if (isDraggingChild) e.stopPropagation();
         }}
         onDragLeave={(e) => {
-          e.stopPropagation();
+          if (isDraggingChild) e.stopPropagation();
         }}
       >
+        {/* No special overlay; container itself forwards to day-level */}
         <input
           type="checkbox"
           checked={item?.completed}
@@ -393,14 +403,8 @@ export default function CalendarDay({
     if (draggedOverItemId) {
       console.log("Finished dragging item in calendar.tsx on line 115");
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
-
-      // If the dragged item is a child (nested under a project), do not let
-      // the day-level handler process this drag end. Nested logic handles it.
-      if (draggedItem && draggedItem.parentId) {
-        setDraggedItemId(null);
-        setDraggedOverItemId(null);
-        return;
-      }
+      // Allow child items to be placed relative to projects at day-level; only
+      // nested list should handle child reorder when directly over child rows.
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(draggedOverItemId);
 
@@ -531,14 +535,10 @@ export default function CalendarDay({
 
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
       console.log("draggedItem", draggedItem);
+      // When hovering day-level targets, ignore nested child drag state.
       if (draggedItem && draggedItem.parentId) {
-        setChildDraggedOverItemId(id);
-        setChildDraggedItemId(draggedItemId);
-        console.log("Setting childDraggedOverItemId to:", id);
-      } else {
         setChildDraggedOverItemId(null);
         setChildDraggedItemId(null);
-        console.log("Setting childDraggedOverItemId to null");
       }
 
       if (isDateBottom || isDateTop) {
@@ -723,6 +723,11 @@ export default function CalendarDay({
                     toggleComplete={(id) => toggleComplete({ id })}
                     draggedItemId={draggedItemId}
                     setDraggedItemId={setDraggedItemId}
+                    isDraggingChild={Boolean(
+                      draggedItemId &&
+                        toDoItems?.find((i) => i._id === draggedItemId)
+                          ?.parentId
+                    )}
                   />
                 ) : (
                   <div
@@ -732,6 +737,7 @@ export default function CalendarDay({
                         ? "border-green-500/30 bg-green-500/5"
                         : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
                     }`}
+                    draggable
                     onDragOver={(e) => {
                       e.preventDefault();
                       handleDragOver(date + item?._id);
@@ -741,6 +747,13 @@ export default function CalendarDay({
                       e.stopPropagation();
                       handleDropOnDay(date + String(item?._id));
                     }}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", String(item?._id));
+                      setDraggedItemId(String(item?._id));
+                    }}
+                    onDragEnd={() => {
+                      handleDragEnd();
+                    }}
                     onDragEnter={(e) => {
                       e.stopPropagation();
                     }}
@@ -748,38 +761,7 @@ export default function CalendarDay({
                       e.stopPropagation();
                     }}
                   >
-                    <div
-                      className="flex items-start gap-3"
-                      draggable
-                      // Reduce drag delay on desktop by starting drag immediately
-                      onMouseDown={(e) => {
-                        // For desktop browsers, initiate drag quickly
-                        const target = e.currentTarget as HTMLElement;
-                        // small timeout to ensure draggable is engaged without long press
-                        target.draggable = true;
-                      }}
-                      onDragStart={(e) => {
-                        // mark this specific day item as the target for between-task insertion
-                        // we encode as `${date}${item._id}` so server can parse date + beforeId
-                        e.dataTransfer.setData("text/plain", String(item?._id));
-                        setDraggedItemId(String(item?._id));
-                      }}
-                      onDragEnd={() => {
-                        // finalize drop: assign to new day or reorder active list depending on draggedOverItemId
-                        handleDragEnd();
-                      }}
-                      onDragOver={(e) => {
-                        // Allow dropping before this specific item
-                        e.preventDefault();
-                        handleDragOver(date + String(item?._id));
-                      }}
-                      onDragEnter={(e) => {
-                        e.stopPropagation();
-                      }}
-                      onDragLeave={(e) => {
-                        e.stopPropagation();
-                      }}
-                    >
+                    <div className="flex items-start gap-3 select-none cursor-grab active:cursor-grabbing">
                       {draggedOverItemId === date + String(item?._id) && (
                         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
                       )}
