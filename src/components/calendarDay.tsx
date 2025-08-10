@@ -37,11 +37,18 @@ function ProjectChildren({
           key={child._id}
           className="relative text-sm text-slate-300 flex items-center gap-2 bg-slate-700/40 rounded-md px-2 py-1 border border-slate-600/50"
           draggable
-          onDragStart={() => {
+          onDragStart={(e) => {
+            e.stopPropagation();
             setDraggedItemId(child._id);
             setChildDraggedItemId(child._id);
           }}
-          onDragEnd={async () => {
+          onDrop={(e) => {
+            // Prevent day-level or project-level drop handlers from firing
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDragEnd={async (e) => {
+            e.stopPropagation();
             const isDateToken =
               !!childDraggedOverItemId &&
               /\d{4}-\d{2}-\d{2}/.test(childDraggedOverItemId);
@@ -101,6 +108,7 @@ function ProjectChildren({
           }}
           onDragOver={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             if (
               draggedItemId &&
               draggedItemId !== child._id &&
@@ -144,7 +152,13 @@ function ProjectChildren({
         id="child-bottom"
         onDragOver={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setChildDraggedOverItemId("child-bottom");
+        }}
+        onDrop={(e) => {
+          // Prevent bubbling to day-level drop zones
+          e.preventDefault();
+          e.stopPropagation();
         }}
         className="h-2"
       >
@@ -166,9 +180,6 @@ function ProjectDayItem({
   toggleComplete,
   draggedItemId,
   setDraggedItemId,
-  childDraggedOverItemId,
-  setChildDraggedOverItemId,
-  setChildDraggedItemId,
 }: {
   item: {
     _id: string;
@@ -184,17 +195,12 @@ function ProjectDayItem({
   toggleComplete: (id: Id<"toDoItems">) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
-  childDraggedOverItemId: string | null;
-  setChildDraggedOverItemId: (id: string | null) => void;
-  setChildDraggedItemId: (id: string | null) => void;
 }) {
   // Local state for child drag interactions within this project
   const [localChildDraggedOverId, setLocalChildDraggedOverId] = useState<
     string | null
   >(null);
-  const [localChildDraggedId, setLocalChildDraggedId] = useState<string | null>(
-    null
-  );
+  // Note: we do not track local child dragged id since it is not needed here
   const [expanded, setExpanded] = useState(false);
   return (
     <div
@@ -290,7 +296,7 @@ function ProjectDayItem({
           setDraggedItemId={setDraggedItemId}
           childDraggedOverItemId={localChildDraggedOverId}
           setChildDraggedOverItemId={setLocalChildDraggedOverId}
-          setChildDraggedItemId={setLocalChildDraggedId}
+          setChildDraggedItemId={() => {}}
         />
       )}
     </div>
@@ -387,6 +393,14 @@ export default function CalendarDay({
     if (draggedOverItemId) {
       console.log("Finished dragging item in calendar.tsx on line 115");
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
+
+      // If the dragged item is a child (nested under a project), do not let
+      // the day-level handler process this drag end. Nested logic handles it.
+      if (draggedItem && draggedItem.parentId) {
+        setDraggedItemId(null);
+        setDraggedOverItemId(null);
+        return;
+      }
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
       const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(draggedOverItemId);
 
@@ -709,9 +723,6 @@ export default function CalendarDay({
                     toggleComplete={(id) => toggleComplete({ id })}
                     draggedItemId={draggedItemId}
                     setDraggedItemId={setDraggedItemId}
-                    childDraggedOverItemId={null}
-                    setChildDraggedOverItemId={() => {}}
-                    setChildDraggedItemId={() => {}}
                   />
                 ) : (
                   <div
