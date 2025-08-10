@@ -13,6 +13,8 @@ function ProjectChildren({
   childDraggedOverItemId,
   setChildDraggedOverItemId,
   setChildDraggedItemId,
+  showNestedHighlights,
+  setDragFromNested,
 }: {
   parentId: Id<"toDoItems">;
   draggedItemId: string | null;
@@ -20,6 +22,8 @@ function ProjectChildren({
   childDraggedOverItemId: string | null;
   setChildDraggedOverItemId: (id: string | null) => void;
   setChildDraggedItemId: (id: string | null) => void;
+  showNestedHighlights: boolean;
+  setDragFromNested: (v: boolean) => void;
 }) {
   const children = useQuery(api.projects.getByParentId, { parentId });
   const updateOrder = useMutation(api.toDoItems.updateOrder);
@@ -39,6 +43,7 @@ function ProjectChildren({
           draggable
           onDragStart={(e) => {
             e.stopPropagation();
+            setDragFromNested(true);
             setDraggedItemId(child._id);
             setChildDraggedItemId(child._id);
           }}
@@ -105,11 +110,13 @@ function ProjectChildren({
             setDraggedItemId(null);
             setChildDraggedItemId(null);
             setChildDraggedOverItemId(null);
+            setDragFromNested(false);
           }}
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
             if (
+              showNestedHighlights &&
               draggedItemId &&
               draggedItemId !== child._id &&
               childDraggedOverItemId !== child._id
@@ -122,7 +129,7 @@ function ProjectChildren({
               setChildDraggedOverItemId(null);
           }}
         >
-          {childDraggedOverItemId === child._id && (
+          {showNestedHighlights && childDraggedOverItemId === child._id && (
             <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full" />
           )}
           <div
@@ -153,7 +160,7 @@ function ProjectChildren({
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setChildDraggedOverItemId("child-bottom");
+          if (showNestedHighlights) setChildDraggedOverItemId("child-bottom");
         }}
         onDrop={(e) => {
           // Prevent bubbling to day-level drop zones
@@ -162,7 +169,7 @@ function ProjectChildren({
         }}
         className="h-2"
       >
-        {childDraggedOverItemId === "child-bottom" && (
+        {showNestedHighlights && childDraggedOverItemId === "child-bottom" && (
           <div className="h-[3px] bg-blue-500 rounded-full" />
         )}
       </div>
@@ -181,6 +188,9 @@ function ProjectDayItem({
   draggedItemId,
   setDraggedItemId,
   isDraggingChild,
+  showNestedHighlights,
+  dragFromNested,
+  setDragFromNested,
 }: {
   item: {
     _id: string;
@@ -197,6 +207,9 @@ function ProjectDayItem({
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
   isDraggingChild: boolean;
+  showNestedHighlights: boolean;
+  dragFromNested: boolean;
+  setDragFromNested: (v: boolean) => void;
 }) {
   // Local state for child drag interactions within this project
   const [localChildDraggedOverId, setLocalChildDraggedOverId] = useState<
@@ -204,6 +217,8 @@ function ProjectDayItem({
   >(null);
   // Note: we do not track local child dragged id since it is not needed here
   const [expanded, setExpanded] = useState(false);
+  // dragFromNested is managed by parent so we can correlate day vs nested sources
+  void dragFromNested; // reference to avoid unused warning in this scope
   return (
     <div
       className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
@@ -307,6 +322,8 @@ function ProjectDayItem({
           childDraggedOverItemId={localChildDraggedOverId}
           setChildDraggedOverItemId={setLocalChildDraggedOverId}
           setChildDraggedItemId={() => {}}
+          showNestedHighlights={showNestedHighlights}
+          setDragFromNested={setDragFromNested}
         />
       )}
     </div>
@@ -607,6 +624,20 @@ export default function CalendarDay({
       ? Math.max(...activeTasksWithOrder.map((item) => item.mainOrder!)) + 1
       : 1;
 
+  // Only show blue insertion bars when dragging a nested child item
+  const isDraggingChild = Boolean(
+    draggedItemId && toDoItems?.find((i) => i._id === draggedItemId)?.parentId
+  );
+  // Track whether the current drag started from inside a nested child list
+  const [dragFromNested, setDragFromNested] = useState(false);
+  // Only show nested highlights when the drag started from a child within this project.
+  // We infer that when dragging a child and the current hovered project contains that child.
+  const getShowNestedHighlights = (projectId: string): boolean => {
+    if (!isDraggingChild || !draggedItemId || !dragFromNested) return false;
+    const dragged = toDoItems?.find((i) => i._id === draggedItemId);
+    return dragged?.parentId === (projectId as unknown as Id<"toDoItems">);
+  };
+
   return (
     <div>
       <div
@@ -723,11 +754,12 @@ export default function CalendarDay({
                     toggleComplete={(id) => toggleComplete({ id })}
                     draggedItemId={draggedItemId}
                     setDraggedItemId={setDraggedItemId}
-                    isDraggingChild={Boolean(
-                      draggedItemId &&
-                        toDoItems?.find((i) => i._id === draggedItemId)
-                          ?.parentId
+                    isDraggingChild={isDraggingChild}
+                    showNestedHighlights={getShowNestedHighlights(
+                      String(item?._id)
                     )}
+                    dragFromNested={dragFromNested}
+                    setDragFromNested={setDragFromNested}
                   />
                 ) : (
                   <div
@@ -750,6 +782,8 @@ export default function CalendarDay({
                     onDragStart={(e) => {
                       e.dataTransfer.setData("text/plain", String(item?._id));
                       setDraggedItemId(String(item?._id));
+                      // Drag started from day view, not nested
+                      setDragFromNested(false);
                     }}
                     onDragEnd={() => {
                       handleDragEnd();
