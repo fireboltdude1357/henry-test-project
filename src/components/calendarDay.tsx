@@ -69,13 +69,13 @@ function ProjectChildren({
                 });
               } else if (
                 overChild ||
-                childDraggedOverItemId === "child-bottom"
+                (childDraggedOverItemId?.startsWith("child-bottom-") ?? false)
               ) {
                 let movingItemNewOrder = overChild?.mainOrder || 0;
                 const maxOrder = (children?.length || 0) + 1;
                 const movingItemOldOrder =
                   dragged.mainOrder || movingItemNewOrder;
-                if (childDraggedOverItemId === "child-bottom") {
+                if (childDraggedOverItemId?.startsWith("child-bottom-")) {
                   movingItemNewOrder = maxOrder;
                 }
                 const difference = movingItemNewOrder - movingItemOldOrder;
@@ -156,22 +156,24 @@ function ProjectChildren({
       ))}
       {/* Bottom zone for child list */}
       <div
-        id="child-bottom"
+        id={`child-bottom-${String(parentId)}`}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (showNestedHighlights) setChildDraggedOverItemId("child-bottom");
+          if (showNestedHighlights)
+            setChildDraggedOverItemId(`child-bottom-${String(parentId)}`);
         }}
         onDrop={(e) => {
           // Prevent bubbling to day-level drop zones
           e.preventDefault();
           e.stopPropagation();
         }}
-        className="h-2"
+        className="h-6"
       >
-        {showNestedHighlights && childDraggedOverItemId === "child-bottom" && (
-          <div className="h-[3px] bg-blue-500 rounded-full" />
-        )}
+        {showNestedHighlights &&
+          childDraggedOverItemId === `child-bottom-${String(parentId)}` && (
+            <div className="h-[5px] bg-blue-500 rounded-full" />
+          )}
       </div>
     </div>
   );

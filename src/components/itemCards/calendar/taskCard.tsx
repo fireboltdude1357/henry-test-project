@@ -16,6 +16,7 @@ export const TaskCard = ({
   setAdditionParentId,
   draggedItemId,
   setDraggedItemId,
+  showHighlight,
 }: {
   _id: string;
   text: string;
@@ -32,9 +33,13 @@ export const TaskCard = ({
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  showHighlight?: boolean;
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
-  const isDraggedOver = draggedOverItemId === _id;
+  const isDraggedOver =
+    typeof showHighlight === "boolean"
+      ? showHighlight
+      : draggedOverItemId === _id;
   return (
     <div
       key={_id}

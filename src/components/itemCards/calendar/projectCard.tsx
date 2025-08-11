@@ -42,7 +42,17 @@ export const ProjectCard = ({
   childDraggedOverItemId: string | null;
   childDraggedItemId: string | null;
 }) => {
-  const isDraggedOver = draggedOverItemId === _id;
+  const children = useQuery(api.projects.getByParentId, {
+    parentId: _id as Id<"toDoItems">,
+  });
+  const isDraggingChildOfThisProject = Boolean(
+    draggedItemId && children?.some((c) => c._id === draggedItemId)
+  );
+  // Gate nested highlight: if this instance is used as a nested card (childDraggedOverItemId is used upstream),
+  // only show the bar when dragging a child of this project. Top-level usage remains unaffected.
+  const isDraggedOver =
+    draggedOverItemId === _id &&
+    (!childDraggedOverItemId || isDraggingChildOfThisProject);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const deleteChildItem = useMutation(api.toDoItems.deleteItem);
   const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
@@ -50,9 +60,7 @@ export const ProjectCard = ({
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const children = useQuery(api.projects.getByParentId, {
-    parentId: _id as Id<"toDoItems">,
-  });
+  // children query moved above
 
   const handleDragStart = (id: string) => {
     setDraggedItemId(id);
@@ -67,16 +75,17 @@ export const ProjectCard = ({
       draggedItemId !== id &&
       childDraggedOverItemId !== id
     ) {
-      const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
-      if (isDateContainer) {
-        setChildDraggedOverItemId(id);
-        console.log(
-          "Dragging over date container and set childDraggedOverItemId:",
-          id
-        );
+      // Only set nested dragged-over targets if we're dragging one of this project's children
+      if (isDraggingChildOfThisProject) {
+        const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
+        if (isDateContainer) {
+          setChildDraggedOverItemId(id);
+        } else {
+          setChildDraggedOverItemId(id);
+        }
       } else {
-        setChildDraggedOverItemId(id);
-        console.log("Dragging over item and set childDraggedOverItemId:", id);
+        // Clear nested highlight for cross-layer drags
+        setChildDraggedOverItemId(null);
       }
       // onDragOver?.(id, e);
     }
@@ -127,14 +136,14 @@ export const ProjectCard = ({
         }
       } else if (
         draggedItem &&
-        (draggedOverItem || childDraggedOverItemId === "child-bottom")
+        (draggedOverItem || childDraggedOverItemId === `${_id}-child-bottom`)
       ) {
         console.log("Dragged item and dragged over item CP");
         let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
         const maxMainOrder = (children?.length || 0) + 1;
 
         const movingItemOldOrder = draggedItem?.mainOrder || movingItemNewOrder;
-        if (childDraggedOverItemId === "child-bottom") {
+        if (childDraggedOverItemId === `${_id}-child-bottom`) {
           movingItemNewOrder = maxMainOrder;
         }
         const difference = movingItemNewOrder - movingItemOldOrder;
@@ -158,11 +167,11 @@ export const ProjectCard = ({
           i += interval
         ) {
           console.log("Updating order for item:", i);
-          const item = children?.find((item) => item.mainOrder === i);
+          const item = children?.find((item) => (item.mainOrder ?? -1) === i);
           if (item) {
             updateOrder({
               id: item._id as Id<"toDoItems">,
-              order: item.mainOrder - interval,
+              order: (item.mainOrder ?? 0) - interval,
             });
           }
         }
@@ -363,28 +372,29 @@ export const ProjectCard = ({
               onDragEnter={() => handleDragEnter(child._id)}
               onDragLeave={() => handleDragLeave(child._id)}
               draggedOverItemId={childDraggedOverItemId}
-              mainOrder={child.mainOrder}
+              mainOrder={child.mainOrder ?? 0}
               setAdditionParentId={setAdditionParentId}
               type={child.type || "task"}
               draggedItemId={draggedItemId}
               setDraggedItemId={setDraggedItemId}
               setChildDraggedOverItemId={setChildDraggedOverItemId}
               childDraggedOverItemId={childDraggedOverItemId}
+              childDraggedItemId={draggedItemId}
             />
           ))}
           {/* Bottom drop zone for child items */}
           <div
-            id="child-bottom"
+            id={`${_id}-child-bottom`}
             onDragOver={(e) => {
               e.preventDefault();
-              handleDragOver("child-bottom", e);
+              handleDragOver(`${_id}-child-bottom`, e);
             }}
             onDragEnter={() => handleDragEnter("child-bottom")}
             onDragLeave={() => handleDragLeave("child-bottom")}
-            className="h-[1px] w-full relative"
+            className="h-6 w-full relative"
           >
-            {childDraggedOverItemId === "child-bottom" && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
+            {childDraggedOverItemId === `${_id}-child-bottom` && (
+              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-purple-500 rounded-full"></div>
             )}
           </div>
         </div>
@@ -403,6 +413,14 @@ export const ProjectCard = ({
               deleteItem={() =>
                 deleteChildItem({ id: child._id as Id<"toDoItems"> })
               }
+              draggedOverItemId={null}
+              mainOrder={child.mainOrder ?? 0}
+              type={child.type || "task"}
+              draggedItemId={draggedItemId}
+              setDraggedItemId={setDraggedItemId}
+              setChildDraggedOverItemId={setChildDraggedOverItemId}
+              childDraggedOverItemId={childDraggedOverItemId}
+              childDraggedItemId={draggedItemId}
             />
           ))}
         </div>

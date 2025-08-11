@@ -22,6 +22,15 @@ interface ItemCardProps {
   setChildDraggedOverItemId: (id: string | null) => void;
   childDraggedOverItemId: string | null;
   childDraggedItemId: string | null;
+  // Optional UI controls (used by calendar sidebar to simplify visuals)
+  forceCollapsed?: boolean;
+  disableNestedDnD?: boolean;
+  // Control highlight explicitly (same-layer only)
+  showHighlight?: boolean;
+  // Optional passthrough for child drag state (ignored by TaskCard)
+  setChildDraggedItemId?: (id: string | null) => void;
+  // Whether the currently dragged item is a nested child (has parentId)
+  draggedItemIsChild?: boolean;
 }
 
 export const ItemCard = ({ type, ...props }: ItemCardProps) => {

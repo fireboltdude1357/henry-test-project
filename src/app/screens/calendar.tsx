@@ -172,12 +172,26 @@ export default function CalendarScreen() {
           });
         }
       } else if (draggedOverItemId === "bottom" && draggedItem) {
-        // Handle dropping at bottom
-        console.log("Dropping at bottom");
-        updateOrder({
-          id: draggedItemId as Id<"toDoItems">,
-          order: maxMainOrder,
+        // Handle dropping at bottom → compact and reindex contiguous 1..n
+        console.log("Dropping at bottom (compact reindex)");
+        const topLevelActive = (toDoItems || []).filter(
+          (i) => !i.completed && i.parentId === undefined
+        );
+        // Sort by existing order (undefined last)
+        const sorted = [...topLevelActive].sort((a, b) => {
+          const ao = a.mainOrder ?? Number.MAX_SAFE_INTEGER;
+          const bo = b.mainOrder ?? Number.MAX_SAFE_INTEGER;
+          return ao - bo;
         });
+        // Move dragged to the end
+        const withoutDragged = sorted.filter((i) => i._id !== draggedItemId);
+        const finalOrder = [...withoutDragged, draggedItem];
+        // Reindex to 1..n
+        await Promise.all(
+          finalOrder.map((item, idx) =>
+            updateOrder({ id: item._id as Id<"toDoItems">, order: idx + 1 })
+          )
+        );
       }
     }
     setDraggedItemId(null);
@@ -255,7 +269,14 @@ export default function CalendarScreen() {
     toDoItems?.filter((item) => item.parentId === undefined) || [];
   const activeTasks = zeroLevelItems?.filter((item) => !item.completed) || [];
   const completedTasks = zeroLevelItems?.filter((item) => item.completed) || [];
-  const maxMainOrder = (activeTasks.length || 0) + 1;
+  // Compute bottom insertion order based on existing max mainOrder, not count.
+  const activeTasksWithOrder = activeTasks.filter(
+    (item) => item.mainOrder !== undefined
+  );
+  const maxMainOrder =
+    activeTasksWithOrder.length > 0
+      ? Math.max(...activeTasksWithOrder.map((item) => item.mainOrder!)) + 1
+      : 1;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
