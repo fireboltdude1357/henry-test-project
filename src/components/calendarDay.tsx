@@ -189,6 +189,7 @@ function ProjectDayItem({
   toggleComplete,
   draggedItemId,
   setDraggedItemId,
+  draggedOverItemId,
   isDraggingChild,
   showNestedHighlights,
   dragFromNested,
@@ -208,6 +209,7 @@ function ProjectDayItem({
   toggleComplete: (id: Id<"toDoItems">) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  draggedOverItemId: string | null;
   isDraggingChild: boolean;
   showNestedHighlights: boolean;
   dragFromNested: boolean;
@@ -246,6 +248,10 @@ function ProjectDayItem({
         if (isDraggingChild) e.stopPropagation();
       }}
     >
+      {!localChildDraggedOverId &&
+        draggedOverItemId === date + String(item?._id) && (
+          <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full z-20" />
+        )}
       <div
         className="flex items-start gap-3"
         draggable
@@ -258,12 +264,7 @@ function ProjectDayItem({
         onDragEnd={() => onDragEnd()}
         onDragOver={(e) => {
           e.preventDefault();
-          if (isDraggingChild) {
-            e.stopPropagation();
-            setLocalChildDraggedOverId("child-bottom");
-          } else {
-            onDragOver(date + String(item?._id));
-          }
+          onDragOver(date + String(item?._id));
         }}
         onDragEnter={(e) => {
           if (isDraggingChild) e.stopPropagation();
@@ -756,6 +757,7 @@ export default function CalendarDay({
                     toggleComplete={(id) => toggleComplete({ id })}
                     draggedItemId={draggedItemId}
                     setDraggedItemId={setDraggedItemId}
+                    draggedOverItemId={draggedOverItemId}
                     isDraggingChild={isDraggingChild}
                     showNestedHighlights={getShowNestedHighlights(
                       String(item?._id)
