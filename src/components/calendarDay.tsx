@@ -15,6 +15,7 @@ function ProjectChildren({
   setChildDraggedItemId,
   showNestedHighlights,
   setDragFromNested,
+  clearDayHover,
 }: {
   parentId: Id<"toDoItems">;
   draggedItemId: string | null;
@@ -24,6 +25,7 @@ function ProjectChildren({
   setChildDraggedItemId: (id: string | null) => void;
   showNestedHighlights: boolean;
   setDragFromNested: (v: boolean) => void;
+  clearDayHover: () => void;
 }) {
   const children = useQuery(api.projects.getByParentId, { parentId });
   const updateOrder = useMutation(api.toDoItems.updateOrder);
@@ -111,6 +113,7 @@ function ProjectChildren({
             setChildDraggedItemId(null);
             setChildDraggedOverItemId(null);
             setDragFromNested(false);
+            clearDayHover();
           }}
           onDragOver={(e) => {
             e.preventDefault();
@@ -194,6 +197,7 @@ function ProjectDayItem({
   showNestedHighlights,
   dragFromNested,
   setDragFromNested,
+  clearDayHover,
 }: {
   item: {
     _id: string;
@@ -214,6 +218,7 @@ function ProjectDayItem({
   showNestedHighlights: boolean;
   dragFromNested: boolean;
   setDragFromNested: (v: boolean) => void;
+  clearDayHover: () => void;
 }) {
   // Local state for child drag interactions within this project
   const [localChildDraggedOverId, setLocalChildDraggedOverId] = useState<
@@ -232,7 +237,8 @@ function ProjectDayItem({
       }`}
       onDragOver={(e) => {
         e.preventDefault();
-        // Always forward to day-level logic when hovering project container
+        // Suppress project-level hover when dragging from inside this project's nested list
+        if (dragFromNested) return;
         onDragOver(date + item?._id);
       }}
       onDrop={(e) => {
@@ -264,7 +270,12 @@ function ProjectDayItem({
         onDragEnd={() => onDragEnd()}
         onDragOver={(e) => {
           e.preventDefault();
-          onDragOver(date + String(item?._id));
+          if (dragFromNested) {
+            e.stopPropagation();
+            setLocalChildDraggedOverId("child-bottom");
+          } else {
+            onDragOver(date + String(item?._id));
+          }
         }}
         onDragEnter={(e) => {
           if (isDraggingChild) e.stopPropagation();
@@ -327,6 +338,7 @@ function ProjectDayItem({
           setChildDraggedItemId={() => {}}
           showNestedHighlights={showNestedHighlights}
           setDragFromNested={setDragFromNested}
+          clearDayHover={clearDayHover}
         />
       )}
     </div>
@@ -531,6 +543,8 @@ export default function CalendarDay({
     }
   };
 
+  // Helper intentionally removed; handled in local child handlers
+
   const handleDragOver = (id: string) => {
     console.log("id:", id);
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
@@ -559,6 +573,12 @@ export default function CalendarDay({
       if (draggedItem && draggedItem.parentId) {
         setChildDraggedOverItemId(null);
         setChildDraggedItemId(null);
+        // Suppress day-level target when the cursor is on the day container
+        // to avoid showing a project/day bar during child reorders
+        if (isDateContainer || isDateTop || isDateBottom) {
+          // Do not change draggedOverItemId in this case
+          return;
+        }
       }
 
       if (isDateBottom || isDateTop) {
@@ -764,6 +784,7 @@ export default function CalendarDay({
                     )}
                     dragFromNested={dragFromNested}
                     setDragFromNested={setDragFromNested}
+                    clearDayHover={() => setDraggedOverItemId(null)}
                   />
                 ) : (
                   <div
