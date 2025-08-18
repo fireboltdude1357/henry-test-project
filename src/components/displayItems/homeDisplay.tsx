@@ -32,8 +32,8 @@ export const HomeDisplay = ({
     <div className="space-y-8">
       {/* Active Tasks */}
       {activeTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">
+        <div className="bg-[var(--surface-1)]/60 rounded-xl p-6 border border-[var(--border)] backdrop-blur-xl">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Active Tasks ({activeTasks.length})
           </h3>
           <div className="space-y-3">

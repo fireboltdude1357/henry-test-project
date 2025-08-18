@@ -123,8 +123,24 @@ export default function HomeScreen({
   const maxMainOrder = (activeTasks.length || 0) + 1;
 
   return (
-    <div className="grid grid-cols-[1fr_3fr] gap-8 h-full">
-      {/* Left Column - Stats */}
+    <div className="grid grid-cols-[3fr_1fr] gap-8 h-full">
+      {/* Left Column - Active and Completed Tasks */}
+      <HomeDisplay
+        activeTasks={activeTasks}
+        completedTasks={completedTasks}
+        setAdditionParentId={setAdditionParentId}
+        draggedOverItemId={draggedOverItemId}
+        handleDragOver={handleDragOver}
+        handleDragEnter={handleDragEnter}
+        handleDragLeave={handleDragLeave}
+        handleDragStart={handleDragStart}
+        handleDragEnd={handleDragEnd}
+        toggleComplete={(id) => toggleComplete({ id })}
+        deleteItem={(id) => deleteItem({ id })}
+        toDoItems={toDoItems || []}
+      />
+
+      {/* Right Column - Stats */}
       <div className="space-y-6">
         <h2 className="text-xl font-semibold text-white mb-4">Statistics</h2>
         {toDoItems && toDoItems.length > 0 && (
@@ -150,22 +166,6 @@ export default function HomeScreen({
           </div>
         )}
       </div>
-
-      {/* Right Column - Active and Completed Tasks */}
-      <HomeDisplay
-        activeTasks={activeTasks}
-        completedTasks={completedTasks}
-        setAdditionParentId={setAdditionParentId}
-        draggedOverItemId={draggedOverItemId}
-        handleDragOver={handleDragOver}
-        handleDragEnter={handleDragEnter}
-        handleDragLeave={handleDragLeave}
-        handleDragStart={handleDragStart}
-        handleDragEnd={handleDragEnd}
-        toggleComplete={(id) => toggleComplete({ id })}
-        deleteItem={(id) => deleteItem({ id })}
-        toDoItems={toDoItems || []}
-      />
     </div>
   );
 }
