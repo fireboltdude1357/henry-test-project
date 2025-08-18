@@ -1,9 +1,7 @@
-import { TaskCard } from "@/components/itemCards/home/taskCard";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useState } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
-import { ItemCard } from "@/components/itemCards/home/itemCard";
 import { HomeDisplay } from "@/components/displayItems/homeDisplay";
 
 export default function HomeScreen({
@@ -23,7 +21,6 @@ export default function HomeScreen({
   const handleDragStart = (id: string) => {
     setDraggedItemId(id);
     console.log("Started dragging item:", id);
-    // You can add any additional logic here when drag starts
   };
 
   const handleDragEnd = async (id: string) => {
@@ -33,23 +30,13 @@ export default function HomeScreen({
       const draggedOverItem = toDoItems?.find(
         (item) => item._id === draggedOverItemId
       );
-      console.log("Dragged item:", draggedItem);
-      console.log("Dragged over item:", draggedOverItem);
-      console.log("Dragged over item id:", draggedOverItemId);
-      console.log("Dragged over item:", draggedOverItem);
       if (draggedItem && (draggedOverItem || draggedOverItemId === "bottom")) {
-        console.log("Dragged item and dragged over item CP");
         let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
-
         const movingItemOldOrder = draggedItem?.mainOrder || movingItemNewOrder;
         if (draggedOverItemId === "bottom") {
           movingItemNewOrder = maxMainOrder;
-          // movingItemOldOrder = maxMainOrder;
         }
         const difference = movingItemNewOrder - movingItemOldOrder;
-        console.log("Difference:", difference);
-        // console.log("Moving item new order:", movingItemNewOrder);
-        // console.log("Moving item old order:", movingItemOldOrder);
         let interval = 0;
         if (difference > 0) {
           interval = 1;
@@ -57,21 +44,16 @@ export default function HomeScreen({
         } else {
           interval = -1;
         }
-        // console.log("Updating order for item:", movingItemOldOrder);
-        //
-        console.log("Moving item new order:", movingItemNewOrder);
-        console.log("Moving item old order:", movingItemOldOrder);
         for (
           let i = movingItemOldOrder + interval;
           i !== movingItemNewOrder + interval;
           i += interval
         ) {
-          console.log("Updating order for item:", i);
           const item = toDoItems?.find((item) => item.mainOrder === i);
-          if (item) {
+          if (item && item.mainOrder !== undefined) {
             updateOrder({
               id: item._id as Id<"toDoItems">,
-              order: item.mainOrder - interval,
+              order: item.mainOrder! - interval,
             });
           }
         }
@@ -79,39 +61,28 @@ export default function HomeScreen({
           id: draggedItemId as Id<"toDoItems">,
           order: movingItemNewOrder,
         });
-        // updateOrder({
-        //   id: draggedOverItemId as Id<"toDoItems">,
-        //   order: draggedItem?.mainOrder || 0,
-        // });
       }
     }
     setDraggedItemId(null);
     setDraggedOverItemId(null);
-    console.log("Finished dragging item in home.tsx on line 89:", id);
-    // You can add any additional logic here when drag ends
   };
 
-  const handleDragOver = (id: string, e: React.DragEvent) => {
-    // Only log if it's a different item than the one being dragged
+  const handleDragOver = (id: string) => {
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       const draggedOverItem = toDoItems?.find((item) => item._id === id);
       if (!draggedOverItem?.parentId) {
-        // setAdditionParentId(draggedOverItem.parentId);
         setDraggedOverItemId(id);
-        console.log("Dragging over item:", id);
       }
     }
   };
 
   const handleDragEnter = (id: string) => {
-    // Only log if it's a different item than the one being dragged
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("Entered item:", id);
     }
   };
 
   const handleDragLeave = (id: string) => {
-    // Only log if it's a different item than the one being dragged
     if (draggedItemId && draggedItemId !== id && draggedOverItemId !== id) {
       console.log("Left item:", id);
     }
