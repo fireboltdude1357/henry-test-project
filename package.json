@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "npx convex dev & next dev",
     "deploy": "NODE_ENV=production npx convex deploy",
-    "build": "npm next build",
+    "build": "npm run next build",
     "start": "next start",
     "lint": "next lint"
   },
