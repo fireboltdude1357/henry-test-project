@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "npx convex dev & next dev",
-    "build": "NODE_ENV=production next build",
+    "build": "npx convex deploy --cmd 'pnpm run build'",
     "start": "next start",
     "lint": "next lint"
   },
