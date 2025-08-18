@@ -189,6 +189,21 @@ export const deleteItem = mutation({
 
     const deletedOrder = itemToDelete.mainOrder;
 
+    // If the item is assigned to a day, remove it from that day's list first
+    if (itemToDelete.assignedDate) {
+      const day = await ctx.db
+        .query("calendarDays")
+        .withIndex("by_user_and_date", (q) =>
+          q.eq("userId", userId._id).eq("date", itemToDelete.assignedDate!)
+        )
+        .unique();
+      if (day) {
+        await ctx.db.patch(day._id, {
+          items: day.items.filter((tid) => tid !== args.id),
+        });
+      }
+    }
+
     // Delete the item
     await ctx.db.delete(args.id);
 

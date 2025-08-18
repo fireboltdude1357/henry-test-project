@@ -6,6 +6,84 @@ import { useRef, useState } from "react";
 
 type ToDoItemType = "project" | "task" | "folder" | undefined;
 
+function CompletedDayItem({
+  item,
+  date,
+  onDragOver,
+  onDrop,
+  calendarDay,
+  toggleComplete,
+}: {
+  item: {
+    _id: string;
+    text: string;
+    completed: boolean;
+    type?: ToDoItemType;
+  };
+  date: string;
+  onDragOver: (id: string) => void;
+  onDrop: (token: string) => void;
+  calendarDay: { items: Id<"toDoItems">[] } | null | undefined;
+  toggleComplete: (id: Id<"toDoItems">) => void;
+}) {
+  const dayIndex = calendarDay?.items
+    ? calendarDay.items.findIndex(
+        (tid) => tid === (item?._id as unknown as Id<"toDoItems">)
+      )
+    : -1;
+  return (
+    <div
+      className={`relative rounded-lg p-3 border transition-all duration-200 border-green-500/30 bg-green-500/5`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOver(date + String(item?._id));
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDrop(date + String(item?._id));
+      }}
+    >
+      <div className="flex items-start gap-3 select-none">
+        <input
+          type="checkbox"
+          checked={item?.completed}
+          onChange={() => {
+            if (item?._id) toggleComplete(item._id as Id<"toDoItems">);
+          }}
+          className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+        />
+        {dayIndex >= 0 && (
+          <span className="mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded bg-slate-600/60 text-[10px] font-mono text-slate-200 border border-slate-500/60">
+            {dayIndex + 1}
+          </span>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-medium line-through text-slate-400`}>
+            {item?.text}
+          </div>
+          {item?.type && (
+            <div className="flex items-center gap-1 mt-1">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  (item?.type as ToDoItemType) === "project"
+                    ? "bg-purple-500"
+                    : (item?.type as ToDoItemType) === "task"
+                      ? "bg-blue-500"
+                      : "bg-yellow-500"
+                }`}
+              ></div>
+              <span className="text-xs text-slate-400 capitalize">
+                {item?.type}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProjectChildren({
   parentId,
   draggedItemId,
@@ -373,6 +451,11 @@ export default function CalendarDay({
 
   const calendarDay = calendarDayData?.day;
   const dayItems = calendarDayData?.items;
+  // For display: show uncompleted items first, completed items at the bottom,
+  // preserving their relative order within each group.
+  const dayUncompletedItems = dayItems?.filter((i) => !i.completed) ?? [];
+  const dayCompletedItems = dayItems?.filter((i) => i.completed) ?? [];
+  const dayItemsSorted = [...dayUncompletedItems, ...dayCompletedItems];
   // console.log("calendarDay:", calendarDayData);
   const { isAuthenticated } = useConvexAuth();
   const toDoItems = useQuery(
@@ -389,6 +472,8 @@ export default function CalendarDay({
   // );
   const isToday = new Date(date).toDateString() === new Date().toDateString();
   const totalCount = calendarDay?.items.length || 0;
+  const dayCompletedCount = dayCompletedItems.length;
+  // const dayActiveCount = dayUncompletedItems.length;
 
   // Format date to YYYY-MM-DD string for API
   // const formatDateForAPI = (date: Date) => date.toISOString().split("T")[0];
@@ -631,7 +716,7 @@ export default function CalendarDay({
     zeroLevelItems?.filter(
       (item) => !item.completed && item.mainOrder !== undefined
     ) || [];
-  const completedTasks = zeroLevelItems?.filter((item) => item.completed) || [];
+  // const completedTasks = zeroLevelItems?.filter((item) => item.completed) || [];
   const activeTasksWithOrder = activeTasks.filter(
     (item) => item.mainOrder !== undefined
   );
@@ -738,14 +823,14 @@ export default function CalendarDay({
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span className="text-green-400 font-medium">
-                      {completedTasks.length}
+                      {dayCompletedCount}
                     </span>
                   </div>
                   <div className="text-slate-500">/</div>
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
                     <span className="text-slate-400 font-medium">
-                      {activeTasks.length}
+                      {totalCount}
                     </span>
                   </div>
                 </>
@@ -757,8 +842,8 @@ export default function CalendarDay({
         {/* Tasks for this day */}
         <div className="p-6 pt-4">
           <div className="space-y-3 mb-4">
-            {dayItems && dayItems.length > 0 ? (
-              dayItems.map((item) =>
+            {dayItemsSorted.length > 0 ? (
+              dayItemsSorted.map((item) =>
                 item?.type === "project" || item?.type === "folder" ? (
                   <ProjectDayItem
                     key={date + item?._id}
@@ -779,6 +864,16 @@ export default function CalendarDay({
                     dragFromNested={dragFromNested}
                     setDragFromNested={setDragFromNested}
                     clearDayHover={() => setDraggedOverItemId(null)}
+                  />
+                ) : item?.completed ? (
+                  <CompletedDayItem
+                    key={date + item?._id}
+                    item={item}
+                    date={date}
+                    onDragOver={(token) => handleDragOver(token)}
+                    onDrop={(token) => handleDropOnDay(token)}
+                    calendarDay={calendarDay}
+                    toggleComplete={(id) => toggleComplete({ id })}
                   />
                 ) : (
                   <div
@@ -828,6 +923,20 @@ export default function CalendarDay({
                         }}
                         className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                       />
+                      {calendarDay?.items
+                        ? (() => {
+                            const idx = calendarDay.items.findIndex(
+                              (tid) =>
+                                tid ===
+                                (item?._id as unknown as Id<"toDoItems">)
+                            );
+                            return idx >= 0 ? (
+                              <span className="mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded bg-slate-600/60 text-[10px] font-mono text-slate-200 border border-slate-500/60">
+                                {idx + 1}
+                              </span>
+                            ) : null;
+                          })()
+                        : null}
                       <div className="flex-1 min-w-0">
                         <div
                           className={`text-sm font-medium ${
