@@ -1,4 +1,5 @@
 import { Id } from "../../../../convex/_generated/dataModel";
+import { playCompletionPop } from "../../../utils/sounds";
 
 export const TaskCard = ({
   _id,
@@ -13,7 +14,6 @@ export const TaskCard = ({
   onDragLeave,
   draggedOverItemId,
   mainOrder,
-  setAdditionParentId,
 }: {
   _id: string;
   text: string;
@@ -62,7 +62,11 @@ export const TaskCard = ({
         <input
           type="checkbox"
           checked={completed}
-          onChange={() => toggleComplete(_id)}
+          onChange={async () => {
+            const wasCompleted = completed;
+            await toggleComplete(_id);
+            if (!wasCompleted) playCompletionPop();
+          }}
           className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
             completed
               ? "text-green-600 focus:ring-green-500"

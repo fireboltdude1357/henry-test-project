@@ -43,7 +43,9 @@ export const HomeDisplay = ({
                 _id={_id}
                 text={text}
                 completed={completed}
-                toggleComplete={() => toggleComplete(_id as Id<"toDoItems">)}
+                toggleComplete={async () => {
+                  await toggleComplete(_id as Id<"toDoItems">);
+                }}
                 deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                 onDragStart={() => handleDragStart(_id)}
                 onDragEnd={() => handleDragEnd(_id)}
@@ -88,7 +90,9 @@ export const HomeDisplay = ({
                 _id={_id}
                 text={text}
                 completed={completed}
-                toggleComplete={() => toggleComplete(_id as Id<"toDoItems">)}
+                toggleComplete={async () => {
+                  await toggleComplete(_id as Id<"toDoItems">);
+                }}
                 deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                 onDragStart={() => handleDragStart(_id)}
                 onDragEnd={() => handleDragEnd(_id)}

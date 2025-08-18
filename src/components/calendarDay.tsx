@@ -4,6 +4,22 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRef, useState } from "react";
 
+// Reusable pop sound for completion. Safe-guarded for SSR.
+let popAudio: HTMLAudioElement | null = null;
+function playCompletionPop(): void {
+  try {
+    if (typeof window === "undefined") return;
+    if (!popAudio) {
+      popAudio = new Audio("/pop.mp3");
+      popAudio.preload = "auto";
+    }
+    popAudio.currentTime = 0;
+    void popAudio.play();
+  } catch {
+    // ignore
+  }
+}
+
 type ToDoItemType = "project" | "task" | "folder" | undefined;
 
 function CompletedDayItem({
@@ -48,8 +64,12 @@ function CompletedDayItem({
         <input
           type="checkbox"
           checked={item?.completed}
-          onChange={() => {
-            if (item?._id) toggleComplete(item._id as Id<"toDoItems">);
+          onChange={async () => {
+            if (item?._id) {
+              const wasCompleted = item.completed;
+              await toggleComplete(item._id as Id<"toDoItems">);
+              if (!wasCompleted) playCompletionPop();
+            }
           }}
           className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
         />
@@ -225,9 +245,11 @@ function ProjectChildren({
           <input
             type="checkbox"
             checked={child.completed}
-            onChange={() =>
-              toggleChildComplete({ id: child._id as Id<"toDoItems"> })
-            }
+            onChange={async () => {
+              const wasCompleted = child.completed;
+              await toggleChildComplete({ id: child._id as Id<"toDoItems"> });
+              if (!wasCompleted) playCompletionPop();
+            }}
             className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
           />
           <span className={child.completed ? "line-through opacity-70" : ""}>
@@ -916,9 +938,13 @@ export default function CalendarDay({
                       <input
                         type="checkbox"
                         checked={item?.completed}
-                        onChange={() => {
+                        onChange={async () => {
                           if (item?._id) {
-                            toggleComplete({ id: item._id as Id<"toDoItems"> });
+                            const wasCompleted = item.completed;
+                            await toggleComplete({
+                              id: item._id as Id<"toDoItems">,
+                            });
+                            if (!wasCompleted) playCompletionPop();
                           }
                         }}
                         className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
