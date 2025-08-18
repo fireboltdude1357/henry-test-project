@@ -53,7 +53,7 @@ export const HomeDisplay = ({
                 onDragEnter={() => handleDragEnter(_id)}
                 onDragLeave={() => handleDragLeave(_id)}
                 draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
+                mainOrder={mainOrder || -1}
                 setAdditionParentId={setAdditionParentId}
                 type={type || "task"}
               />
@@ -100,7 +100,7 @@ export const HomeDisplay = ({
                 onDragEnter={() => handleDragEnter(_id)}
                 onDragLeave={() => handleDragLeave(_id)}
                 draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
+                mainOrder={mainOrder || -1}
                 type={type || "task"}
                 setAdditionParentId={setAdditionParentId}
               />
