@@ -2,7 +2,7 @@ import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../convex/_generated/api";
 // no local state needed currently
 import { Id } from "../../convex/_generated/dataModel";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type ToDoItemType = "project" | "task" | "folder" | undefined;
 
@@ -430,6 +430,14 @@ export default function CalendarDay({
 
   // central drag-end handled in parent
   const handleDragEnd = async () => {
+    // If a drop just occurred, skip drag-end handling to avoid a second, stale assignment
+    if (didDropRef.current) {
+      didDropRef.current = false;
+      setDraggedItemId(null);
+      setDraggedOverItemId(null);
+      console.log("Finished dragging item in calendar.tsx on line 196");
+      return;
+    }
     console.log("================================================");
     console.log("draggedOverItemId", draggedOverItemId);
     if (draggedOverItemId) {
@@ -438,26 +446,13 @@ export default function CalendarDay({
       // Allow child items to be placed relative to projects at day-level; only
       // nested list should handle child reorder when directly over child rows.
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
-      const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(draggedOverItemId);
 
       console.log("Drag end - draggedItemId:", draggedItemId);
       console.log("Drag end - draggedOverItemId:", draggedOverItemId);
       console.log("Drag end - isDateContainer:", isDateContainer);
       console.log("Drag end - draggedItem:", draggedItem);
 
-      if ((isDateContainer || isDateItem) && draggedItem) {
-        // Handle dropping on a day container - assign item to that date
-        console.log("Assigning item to date:", draggedOverItemId);
-        try {
-          await assignItemToDate({
-            id: draggedItem._id as Id<"toDoItems">,
-            date: draggedOverItemId,
-          });
-          console.log("Successfully assigned item to date");
-        } catch (error) {
-          console.error("Failed to assign item to date:", error);
-        }
-      } else if (draggedOverItemId !== "bottom") {
+      if (draggedOverItemId !== "bottom") {
         // Handle dropping on other todo items (existing reordering logic)
         // Only do reordering if we're not dropping on a date container
         const draggedOverItem = toDoItems?.find(
@@ -528,6 +523,7 @@ export default function CalendarDay({
 
   // Explicit drop handler on day or day-item targets to ensure finalization
   const handleDropOnDay = async (targetToken: string) => {
+    didDropRef.current = true; // signal that a proper drop occurred
     if (!draggedItemId) return;
     const draggedItem = toDoItems?.find((i) => i._id === draggedItemId);
     if (!draggedItem) return;
@@ -573,12 +569,9 @@ export default function CalendarDay({
       if (draggedItem && draggedItem.parentId) {
         setChildDraggedOverItemId(null);
         setChildDraggedItemId(null);
-        // Suppress day-level target when the cursor is on the day container
-        // to avoid showing a project/day bar during child reorders
-        if (isDateContainer || isDateTop || isDateBottom) {
-          // Do not change draggedOverItemId in this case
-          return;
-        }
+        // Allow day-level highlight to update across days while dragging a child.
+        // Nested component handles child reorders; here we want day highlighting
+        // to move when hovering other days, so do not early-return.
       }
 
       if (isDateBottom || isDateTop) {
@@ -653,6 +646,7 @@ export default function CalendarDay({
   );
   // Track whether the current drag started from inside a nested child list
   const [dragFromNested, setDragFromNested] = useState(false);
+  const didDropRef = useRef(false);
   // Only show nested highlights when the drag started from a child within this project.
   // We infer that when dragging a child and the current hovered project contains that child.
   const getShowNestedHighlights = (projectId: string): boolean => {
