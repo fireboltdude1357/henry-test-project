@@ -61,7 +61,26 @@ const applicationTables = {
   peopleData: defineTable({
     personId: v.id("people"),
     birthday: v.string(),
-    movies: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    movies: v.array(
+      v.object({
+        text: v.string(),
+        completed: v.boolean(),
+        details: v.optional(
+          v.object({
+            imdbId: v.string(),
+            title: v.string(),
+            year: v.optional(v.string()),
+            poster: v.optional(v.string()),
+            runtime: v.optional(v.string()),
+            genre: v.optional(v.string()),
+            plot: v.optional(v.string()),
+            ratings: v.optional(
+              v.array(v.object({ source: v.string(), value: v.string() }))
+            ),
+          })
+        ),
+      })
+    ),
     books: v.array(v.object({ text: v.string(), completed: v.boolean() })),
     tvShows: v.array(v.object({ text: v.string(), completed: v.boolean() })),
     music: v.array(v.object({ text: v.string(), completed: v.boolean() })),
