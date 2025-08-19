@@ -70,7 +70,7 @@ export const ProjectCard = ({
     // You can add any additional logic here when drag starts
   };
 
-  const handleDragOver = (id: string) => {
+  const handleDragOver = (id: string, e?: React.DragEvent) => {
     // Only log if it's a different item than the one being dragged
     if (
       draggedItemId &&
@@ -93,7 +93,7 @@ export const ProjectCard = ({
     }
 
     // Also forward to parent for calendar-level handling
-    onDragOver?.(id, e);
+    onDragOver?.(id, e as React.DragEvent);
   };
   const handleDragEnd = async (id: string) => {
     console.log("================================================");
