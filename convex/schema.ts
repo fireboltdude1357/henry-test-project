@@ -54,6 +54,22 @@ const applicationTables = {
     startDate: v.string(),
     endDate: v.string(),
   }),
+  people: defineTable({
+    name: v.string(),
+    userId: v.id("users"),
+  }).index("by_user", ["userId"]),
+  peopleData: defineTable({
+    personId: v.id("people"),
+    birthday: v.string(),
+    movies: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    books: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    tvShows: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    music: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    games: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    other: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    userId: v.id("users"),
+    name: v.string(),
+  }).index("by_person", ["personId"]),
 };
 
 export default defineSchema({
