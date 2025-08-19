@@ -414,7 +414,7 @@ export const assignItemToDateAtPosition = mutation({
     // Get all items for the target date
     const existingItemsForDate = await ctx.db
       .query("toDoItems")
-      .withIndex("by_user_assigned_date", (q) =>
+      .withIndex("by_user_and_assigned_date", (q) =>
         q.eq("userId", userId._id).eq("assignedDate", args.date)
       )
       .collect();
@@ -468,7 +468,7 @@ export const assignItemToDateAtPosition = mutation({
 
       const remainingItemsOnPreviousDate = await ctx.db
         .query("toDoItems")
-        .withIndex("by_user_assigned_date", (q) =>
+        .withIndex("by_user_and_assigned_date", (q) =>
           q.eq("userId", userId._id).eq("assignedDate", previousAssignedDate)
         )
         .collect();
@@ -515,7 +515,7 @@ export const assignItemToDate = mutation({
     }
     const existingItemsForDate = await ctx.db
       .query("toDoItems")
-      .withIndex("by_user_assigned_date", (q) =>
+      .withIndex("by_user_and_assigned_date", (q) =>
         q.eq("userId", userId._id).eq("assignedDate", args.date)
       )
       .collect();
