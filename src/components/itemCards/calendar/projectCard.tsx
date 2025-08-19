@@ -91,6 +91,9 @@ export const ProjectCard = ({
       }
       // onDragOver?.(id, e);
     }
+
+    // Also forward to parent for calendar-level handling
+    onDragOver?.(id, e);
   };
   const handleDragEnd = async (id: string) => {
     console.log("================================================");
@@ -110,7 +113,10 @@ export const ProjectCard = ({
         (item) => item._id === childDraggedOverItemId
       );
       console.log("Dragged item:", draggedItem);
-      console.log("Dragged over item:", draggedOverItem);
+      console.log(
+        "Dragged over item in projectCard.tsx on line 78:",
+        draggedOverItem
+      );
       console.log("Dragged over item id:", childDraggedOverItemId);
       console.log("Dragged over item:", draggedOverItem);
       if (isDateItem && draggedItem) {
@@ -171,8 +177,18 @@ export const ProjectCard = ({
       draggedItemId !== id &&
       childDraggedOverItemId !== id
     ) {
-      console.log("Entered item:", id);
+      const draggedOverChild = children?.find((item) => item._id === id);
+      if (draggedOverChild || id === "child-bottom") {
+        setChildDraggedOverItemId(id);
+        console.log(
+          "Entered child item, setting childDraggedOverItemId to:",
+          id
+        );
+      }
     }
+
+    // Forward to parent
+    onDragEnter?.(id);
   };
 
   const handleDragLeave = (id: string) => {
@@ -183,6 +199,9 @@ export const ProjectCard = ({
     ) {
       console.log("Left item:", id);
     }
+
+    // Forward to parent
+    onDragLeave?.(id);
   };
 
   return (
@@ -207,7 +226,12 @@ export const ProjectCard = ({
         onDragLeave={() => {
           onDragLeave?.(_id);
         }}
-        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDragEnd?.(_id);
+        }}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${
           completed
             ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
             : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
@@ -262,7 +286,7 @@ export const ProjectCard = ({
       </div>
 
       {isDraggedOver && (
-        <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-purple-500 rounded-full"></div>
+        <div className="absolute -top-1 left-0 right-0 h-1 bg-purple-500 rounded-full z-10"></div>
       )}
 
       {children && children.length > 0 && isExpanded && (

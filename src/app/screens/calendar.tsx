@@ -25,7 +25,11 @@ export default function CalendarScreen({
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
+  const updateDayOrder = useMutation(api.toDoItems.updateDayOrder);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
+  const assignItemToDateAtPosition = useMutation(
+    api.toDoItems.assignItemToDateAtPosition
+  );
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
     null
@@ -100,12 +104,12 @@ export default function CalendarScreen({
         try {
           await assignItemToDate({
             id: draggedItem._id as Id<"toDoItems">,
-            date: draggedOverItemId,
+            date: currentDraggedOverItemId,
           });
         } catch {}
       } else if (draggedOverItemId !== "bottom") {
         const draggedOverItem = toDoItems?.find(
-          (item) => item._id === draggedOverItemId
+          (item) => item._id === itemIdToFind
         );
         if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
           let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
@@ -117,7 +121,50 @@ export default function CalendarScreen({
             interval = 1;
             movingItemNewOrder = movingItemNewOrder - 1;
           } else {
-            interval = -1;
+            // SIDEBAR CONTEXT: Use mainOrder logic (like home page)
+            console.log("Using sidebar mainOrder reordering logic");
+
+            if (!draggedOverItem.parentId) {
+              let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+              const movingItemOldOrder =
+                draggedItem?.mainOrder || movingItemNewOrder;
+
+              const difference = movingItemNewOrder - movingItemOldOrder;
+              console.log("Main order difference:", difference);
+
+              let interval = 0;
+              if (difference > 0) {
+                interval = 1;
+                movingItemNewOrder = movingItemNewOrder - 1;
+              } else {
+                interval = -1;
+              }
+
+              console.log("Moving item new mainOrder:", movingItemNewOrder);
+              console.log("Moving item old mainOrder:", movingItemOldOrder);
+
+              // Reorder items between old and new positions using mainOrder
+              for (
+                let i = movingItemOldOrder + interval;
+                i !== movingItemNewOrder + interval;
+                i += interval
+              ) {
+                console.log("Updating mainOrder for item with order:", i);
+                const item = toDoItems?.find((item) => item.mainOrder === i);
+                if (item) {
+                  updateOrder({
+                    id: item._id as Id<"toDoItems">,
+                    order: (item.mainOrder || 0) - interval,
+                  });
+                }
+              }
+
+              // Update the dragged item's mainOrder
+              updateOrder({
+                id: draggedItemId as Id<"toDoItems">,
+                order: movingItemNewOrder,
+              });
+            }
           }
           for (
             let i = movingItemOldOrder + interval;
@@ -126,19 +173,20 @@ export default function CalendarScreen({
           ) {
             const item = toDoItems?.find((item) => item.mainOrder === i);
             if (item) {
+              console.log(
+                `Shifting item "${item.text}" from mainOrder ${i} to ${i - 1}`
+              );
               updateOrder({
                 id: item._id as Id<"toDoItems">,
                 order: (item.mainOrder || 0) - interval,
               });
             }
           }
-          updateOrder({
-            id: draggedItemId as Id<"toDoItems">,
-            order: movingItemNewOrder,
-          });
         }
       }
     }
+    console.log("draggedItemId", draggedItemId);
+    console.log("draggedOverItemId", draggedOverItemId);
     setDraggedItemId(null);
     setDraggedOverItemId(null);
   };

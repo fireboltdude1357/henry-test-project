@@ -63,7 +63,12 @@ export const TaskCard = ({
       onDragLeave={() => {
         onDragLeave?.(_id);
       }}
-      className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDragEnd?.(_id);
+      }}
+      className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${
         completed
           ? "bg-slate-800/20 border-slate-700/20 opacity-75 hover:opacity-100"
           : "bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50"
@@ -115,7 +120,7 @@ export const TaskCard = ({
         </button>
       </div>
       {isDraggedOver && (
-        <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
+        <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 rounded-full z-10"></div>
       )}
     </div>
   );
