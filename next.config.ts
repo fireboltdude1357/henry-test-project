@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "img.omdbapi.com" },
       { protocol: "http", hostname: "ia.media-imdb.com" },
       { protocol: "https", hostname: "ia.media-imdb.com" },
+      // Open Library covers
+      { protocol: "http", hostname: "covers.openlibrary.org" },
+      { protocol: "https", hostname: "covers.openlibrary.org" },
     ],
   },
 };

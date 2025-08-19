@@ -130,7 +130,9 @@ export const addItem = mutation({
     }>;
 
     const newItem =
-      args.category === "movies"
+      args.category === "movies" ||
+      args.category === "tvShows" ||
+      args.category === "books"
         ? { text: trimmed, completed: false, details: undefined }
         : { text: trimmed, completed: false };
 
@@ -497,6 +499,151 @@ export const addTvShowWithDetails = mutation({
       newShow,
     ];
     await ctx.db.patch(peopleDataDoc._id, { tvShows: updated });
+    return peopleDataDoc._id;
+  },
+});
+
+// Books via Open Library
+export const searchBooks = action({
+  args: { query: v.string() },
+  handler: async (_ctx, args) => {
+    const q = args.query.trim();
+    if (q.length < 2)
+      return [] as {
+        key: string; // work key
+        title: string;
+        first_publish_year?: number;
+        cover_i?: number;
+        subject?: string[];
+        description?: string;
+      }[];
+    const url = `https://openlibrary.org/search.json?limit=5&q=${encodeURIComponent(q)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Open Library search failed");
+    const data = await res.json();
+    const docs = (data.docs || []) as Array<{
+      key: string;
+      title: string;
+      first_publish_year?: number;
+      cover_i?: number;
+      subject?: string[];
+    }>;
+    return docs.slice(0, 5).map((d) => ({
+      key: d.key, // e.g. "/works/OL12345W"
+      title: d.title,
+      first_publish_year: d.first_publish_year,
+      cover_i: d.cover_i,
+      subject: d.subject,
+    }));
+  },
+});
+
+export const addBookByKey = action({
+  args: {
+    personId: v.id("people"),
+    workKey: v.string(),
+    titleFallback: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const workKey = args.workKey; // "/works/OL...W"
+    const url = `https://openlibrary.org${workKey}.json`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Open Library work fetch failed");
+    const w: {
+      title?: string;
+      description?: string | { value?: string };
+      first_publish_date?: string;
+      number_of_pages?: number;
+      subjects?: string[];
+      covers?: number[];
+    } = await res.json();
+
+    let description: string | undefined = undefined;
+    if (typeof w.description === "string") description = w.description;
+    else if (w.description && typeof w.description.value === "string")
+      description = w.description.value;
+
+    const coverId =
+      Array.isArray(w.covers) && w.covers.length > 0 ? w.covers[0] : undefined;
+    const coverUrl = coverId
+      ? `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`
+      : undefined;
+
+    await ctx.runMutation(api.peopleData.addBookWithDetails, {
+      personId: args.personId,
+      title: w.title || args.titleFallback,
+      openLibraryId: workKey,
+      year: w.first_publish_date as string | undefined,
+      poster: coverUrl,
+      runtime: w.number_of_pages as string | undefined,
+      genre: Array.isArray(w.subjects)
+        ? (w.subjects as string[]).slice(0, 4).join(", ")
+        : undefined,
+      plot: description,
+    });
+    return { ok: true };
+  },
+});
+
+export const addBookWithDetails = mutation({
+  args: {
+    personId: v.id("people"),
+    title: v.string(),
+    openLibraryId: v.string(),
+    year: v.optional(v.string()),
+    poster: v.optional(v.string()),
+    runtime: v.optional(v.string()),
+    genre: v.optional(v.string()),
+    plot: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+
+    const newBook = {
+      text: args.title,
+      completed: false,
+      details: {
+        openLibraryId: args.openLibraryId,
+        title: args.title,
+        year: args.year,
+        poster: args.poster,
+        runtime: args.runtime,
+        genre: args.genre,
+        plot: args.plot,
+      },
+    };
+
+    const updatedBooks = [
+      ...(peopleDataDoc.books as unknown as {
+        text: string;
+        completed: boolean;
+        details?: {
+          openLibraryId: string;
+          title: string;
+          year?: string;
+          poster?: string;
+          runtime?: string;
+          genre?: string;
+          plot?: string;
+        };
+      }[]),
+      newBook,
+    ];
+    await ctx.db.patch(peopleDataDoc._id, { books: updatedBooks });
     return peopleDataDoc._id;
   },
 });

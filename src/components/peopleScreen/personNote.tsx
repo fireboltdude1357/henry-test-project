@@ -16,6 +16,8 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   const addMovieByImdbId = useAction(api.peopleData.addMovieByImdbId);
   const searchTvShows = useAction(api.peopleData.searchTvShows);
   const addTvShowByImdbId = useAction(api.peopleData.addTvShowByImdbId);
+  const searchBooks = useAction(api.peopleData.searchBooks);
+  const addBookByKey = useAction(api.peopleData.addBookByKey);
 
   type Category = "movies" | "books" | "tvShows" | "music" | "games" | "other";
   const categories: { key: Category; label: string }[] = [
@@ -52,7 +54,8 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
     const hasItems = !!items && items.length > 0;
     const isMovies = keyName === "movies";
     const isTv = keyName === "tvShows";
-    const isMedia = isMovies || isTv;
+    const isBooks = keyName === "books";
+    const isMedia = isMovies || isTv || isBooks;
     type MovieDetails = {
       imdbId: string;
       title: string;
@@ -298,6 +301,46 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
             }}
             onSearch={async (q) => {
               return await searchTvShows({ query: q });
+            }}
+          />
+        ) : keyName === "books" ? (
+          <MoviesInput
+            onSubmitText={(value) => handleAdd(keyName, value)}
+            onChooseSuggestion={async (s: {
+              imdbID: string;
+              Title: string;
+            }) => {
+              await addBookByKey({
+                personId,
+                workKey: s.imdbID,
+                titleFallback: s.Title,
+              });
+            }}
+            onSearch={async (q) => {
+              const results = await searchBooks({ query: q });
+              return results.map(
+                (r: {
+                  key: string;
+                  title: string;
+                  first_publish_year?: number;
+                  cover_i?: number;
+                  subject?: string[];
+                }) => ({
+                  imdbID: r.key, // reuse field name for key
+                  Title: r.title,
+                  Year: r.first_publish_year
+                    ? String(r.first_publish_year)
+                    : "",
+                  Poster: r.cover_i
+                    ? `https://covers.openlibrary.org/b/id/${r.cover_i}-M.jpg`
+                    : undefined,
+                  Plot: undefined,
+                  Genre: Array.isArray(r.subject)
+                    ? r.subject.slice(0, 4).join(", ")
+                    : undefined,
+                  Runtime: undefined,
+                })
+              );
             }}
           />
         ) : (

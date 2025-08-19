@@ -81,7 +81,25 @@ const applicationTables = {
         ),
       })
     ),
-    books: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    books: v.array(
+      v.object({
+        text: v.string(),
+        completed: v.boolean(),
+        details: v.optional(
+          v.object({
+            // Open Library work key or other ID
+            openLibraryId: v.string(),
+            title: v.string(),
+            year: v.optional(v.string()),
+            // Keep naming consistent with UI rendering that expects `poster`
+            poster: v.optional(v.string()),
+            runtime: v.optional(v.string()), // pages
+            genre: v.optional(v.string()), // subjects
+            plot: v.optional(v.string()), // description
+          })
+        ),
+      })
+    ),
     tvShows: v.array(
       v.object({
         text: v.string(),
