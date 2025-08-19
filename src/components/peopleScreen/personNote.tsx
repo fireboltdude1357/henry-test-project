@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Image from "next/image";
 import { api } from "../../../convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -13,6 +14,8 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   const removeItem = useMutation(api.peopleData.removeItem);
   const searchMovies = useAction(api.peopleData.searchMovies);
   const addMovieByImdbId = useAction(api.peopleData.addMovieByImdbId);
+  const searchTvShows = useAction(api.peopleData.searchTvShows);
+  const addTvShowByImdbId = useAction(api.peopleData.addTvShowByImdbId);
 
   type Category = "movies" | "books" | "tvShows" | "music" | "games" | "other";
   const categories: { key: Category; label: string }[] = [
@@ -48,6 +51,8 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
       | undefined;
     const hasItems = !!items && items.length > 0;
     const isMovies = keyName === "movies";
+    const isTv = keyName === "tvShows";
+    const isMedia = isMovies || isTv;
     type MovieDetails = {
       imdbId: string;
       title: string;
@@ -133,7 +138,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
             }}
           >
             {items!.map((item, idx) => {
-              const details = isMovies
+              const details = isMedia
                 ? (item as unknown as { details?: MovieDetails }).details
                 : undefined;
               const isOpen = !!expanded[idx];
@@ -175,7 +180,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                         {item.text}
                       </span>
                     </label>
-                    {isMovies && details && (
+                    {isMedia && details && (
                       <button
                         onClick={() => toggleExpanded(idx)}
                         title={isOpen ? "Hide details" : "Show details"}
@@ -208,7 +213,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                       Delete
                     </button>
                   </div>
-                  {isMovies && details && isOpen && (
+                  {isMedia && details && isOpen && (
                     <div
                       style={{
                         marginTop: 8,
@@ -224,7 +229,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                       }}
                     >
                       {details.poster && (
-                        <img
+                        <Image
                           src={details.poster}
                           alt={details.title}
                           width={64}
@@ -279,6 +284,20 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
             }}
             onSearch={async (q) => {
               return await searchMovies({ query: q });
+            }}
+          />
+        ) : keyName === "tvShows" ? (
+          <MoviesInput
+            onSubmitText={(value) => handleAdd(keyName, value)}
+            onChooseSuggestion={async (s) => {
+              await addTvShowByImdbId({
+                personId,
+                imdbId: s.imdbID,
+                titleFallback: s.Title,
+              });
+            }}
+            onSearch={async (q) => {
+              return await searchTvShows({ query: q });
             }}
           />
         ) : (
@@ -351,16 +370,33 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
       Title: string;
       Year: string;
       Poster?: string;
+      Plot?: string;
+      Genre?: string;
+      Runtime?: string;
     }) => void | Promise<void>;
-    onSearch: (
-      q: string
-    ) => Promise<
-      { imdbID: string; Title: string; Year: string; Poster?: string }[]
+    onSearch: (q: string) => Promise<
+      {
+        imdbID: string;
+        Title: string;
+        Year: string;
+        Poster?: string;
+        Plot?: string;
+        Genre?: string;
+        Runtime?: string;
+      }[]
     >;
   }) {
     const [value, setValue] = useState("");
     const [suggestions, setSuggestions] = useState<
-      { imdbID: string; Title: string; Year: string; Poster?: string }[]
+      {
+        imdbID: string;
+        Title: string;
+        Year: string;
+        Poster?: string;
+        Plot?: string;
+        Genre?: string;
+        Runtime?: string;
+      }[]
     >([]);
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
@@ -383,7 +419,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
 
     return (
       <div style={{ position: "relative" }}>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input
             value={value}
             onChange={(e) => {
@@ -420,6 +456,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
               width: "100%",
             }}
           />
+          {loading && <Spinner size={16} />}
           <button
             onClick={() => {
               onSubmitText(value);
@@ -478,14 +515,51 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                       style={{
                         width: "100%",
                         textAlign: "left",
-                        padding: "10px 12px",
+                        padding: 0,
                         background: "transparent",
                         border: "none",
                         color: "var(--foreground)",
                         cursor: "pointer",
                       }}
                     >
-                      {s.Title} {s.Year ? `(${s.Year})` : ""}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: s.Poster ? "40px 1fr" : "1fr",
+                          gap: 10,
+                          padding: "10px 12px",
+                        }}
+                      >
+                        {s.Poster && (
+                          <Image
+                            src={s.Poster}
+                            alt={s.Title}
+                            width={40}
+                            height={60}
+                            style={{
+                              objectFit: "cover",
+                              borderRadius: 4,
+                              border: "1px solid var(--border)",
+                            }}
+                          />
+                        )}
+                        <div style={{ fontSize: 13 }}>
+                          <div>
+                            <strong>{s.Title}</strong>
+                            {s.Year ? ` (${s.Year})` : ""}
+                          </div>
+                          <div style={{ color: "var(--muted)", marginTop: 4 }}>
+                            {[s.Runtime, s.Genre].filter(Boolean).join(" • ")}
+                          </div>
+                          {s.Plot && (
+                            <div
+                              style={{ color: "var(--muted)", marginTop: 4 }}
+                            >
+                              {s.Plot}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </button>
                   </li>
                 ))}
@@ -494,6 +568,46 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
           </div>
         )}
       </div>
+    );
+  }
+
+  function Spinner({ size = 16 }: { size?: number }) {
+    const s = size;
+    const stroke = "var(--muted)";
+    return (
+      <svg
+        width={s}
+        height={s}
+        viewBox="0 0 50 50"
+        role="status"
+        aria-label="Loading"
+      >
+        <circle
+          cx="25"
+          cy="25"
+          r="20"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="6"
+          strokeOpacity="0.2"
+        />
+        <path
+          d="M25 5 a20 20 0 0 1 0 40 a20 20 0 0 1 0 -40"
+          fill="none"
+          stroke={stroke}
+          strokeWidth="6"
+          strokeLinecap="round"
+        >
+          <animateTransform
+            attributeName="transform"
+            type="rotate"
+            from="0 25 25"
+            to="360 25 25"
+            dur="0.8s"
+            repeatCount="indefinite"
+          />
+        </path>
+      </svg>
     );
   }
   return (
