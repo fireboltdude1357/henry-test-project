@@ -104,12 +104,12 @@ export default function CalendarScreen({
         try {
           await assignItemToDate({
             id: draggedItem._id as Id<"toDoItems">,
-            date: currentDraggedOverItemId,
+            date: draggedOverItemId,
           });
         } catch {}
       } else if (draggedOverItemId !== "bottom") {
         const draggedOverItem = toDoItems?.find(
-          (item) => item._id === itemIdToFind
+          (item) => item._id === draggedOverItemId
         );
         if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
           let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
