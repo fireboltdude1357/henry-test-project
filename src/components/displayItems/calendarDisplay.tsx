@@ -15,6 +15,10 @@ export const CalendarItemDisplay = ({
   toDoItems,
   draggedItemId,
   setDraggedItemId,
+  setChildDraggedOverItemId,
+  childDraggedOverItemId,
+  childDraggedItemId,
+  setChildDraggedItemId,
 }: {
   activeTasks: Doc<"toDoItems">[];
   completedTasks: Doc<"toDoItems">[];
@@ -29,6 +33,10 @@ export const CalendarItemDisplay = ({
   toDoItems: Doc<"toDoItems">[];
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  childDraggedItemId: string | null;
+  setChildDraggedItemId: (id: string | null) => void;
 }) => {
   return (
     <div className="space-y-8 ">
@@ -39,41 +47,85 @@ export const CalendarItemDisplay = ({
             Active Tasks ({activeTasks.length})
           </h3>
           <div className="space-y-3">
-            {activeTasks.map(({ _id, text, completed, mainOrder, type }) => (
-              <ItemCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={() => toggleComplete(_id as Id<"toDoItems">)}
-                deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
-                type={type || "task"}
-                draggedItemId={draggedItemId}
-                setDraggedItemId={setDraggedItemId}
-              />
-            ))}
-            {/* Invisible bottom drop zone */}
-            <div
-              id="bottom"
-              onDragOver={(e) => {
-                e.preventDefault();
-                handleDragOver("bottom", e);
-              }}
-              onDragEnter={() => handleDragEnter("bottom")}
-              onDragLeave={() => handleDragLeave("bottom")}
-              className="h-8 w-full relative"
-            >
-              {draggedOverItemId === "bottom" && (
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
-              )}
-            </div>
+            {activeTasks.map(
+              ({ _id, text, completed, mainOrder, type, parentId }) => {
+                // Only show highlight when dragging within the same layer:
+                // - If the dragged item has a parent, only highlight items with that same parent
+                // - If the dragged item has no parent, only highlight top-level items
+                const dragged = draggedItemId
+                  ? toDoItems.find((i) => i._id === draggedItemId)
+                  : undefined;
+                const sameLayer = dragged
+                  ? dragged.parentId === parentId
+                  : parentId === undefined;
+                const showHighlight = sameLayer && draggedOverItemId === _id;
+                // Also suppress setting draggedOver id to cross-layer targets by short-circuiting onDragOver
+                const onDragOverGuarded = (id: string, e: React.DragEvent) => {
+                  if (sameLayer) {
+                    handleDragOver(id, e);
+                  } else {
+                    // Prevent cross-layer hover from becoming active target
+                    e.preventDefault();
+                  }
+                };
+                return (
+                  <ItemCard
+                    key={_id}
+                    _id={_id}
+                    text={text}
+                    completed={completed}
+                    toggleComplete={async () => {
+                      await toggleComplete(_id as Id<"toDoItems">);
+                    }}
+                    deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
+                    onDragStart={() => handleDragStart(_id)}
+                    onDragEnd={() => handleDragEnd(_id)}
+                    onDragOver={(id, e) => onDragOverGuarded(id, e)}
+                    onDragEnter={() => handleDragEnter(_id)}
+                    onDragLeave={() => handleDragLeave(_id)}
+                    draggedOverItemId={draggedOverItemId}
+                    mainOrder={mainOrder ?? 0}
+                    type={type || "task"}
+                    draggedItemId={draggedItemId}
+                    setDraggedItemId={setDraggedItemId}
+                    setChildDraggedOverItemId={setChildDraggedOverItemId}
+                    childDraggedOverItemId={childDraggedOverItemId}
+                    childDraggedItemId={childDraggedItemId}
+                    setChildDraggedItemId={setChildDraggedItemId}
+                    // control highlight strictly by same-layer logic
+                    showHighlight={showHighlight}
+                    draggedItemIsChild={Boolean(dragged?.parentId)}
+                  />
+                );
+              }
+            )}
+            {/* Invisible bottom drop zone (only for top-level drags) */}
+            {(() => {
+              const dragged = draggedItemId
+                ? toDoItems.find((i) => i._id === draggedItemId)
+                : undefined;
+              const isTopLevelDrag = !dragged?.parentId;
+              return (
+                <div
+                  id="bottom"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (isTopLevelDrag) handleDragOver("bottom", e);
+                  }}
+                  onDragEnter={() => {
+                    if (isTopLevelDrag) handleDragEnter("bottom");
+                  }}
+                  onDragLeave={() => {
+                    if (isTopLevelDrag) handleDragLeave("bottom");
+                  }}
+                  className="h-12 w-full relative"
+                >
+                  {isTopLevelDrag && draggedOverItemId === "bottom" && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500 rounded-full"></div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -91,7 +143,9 @@ export const CalendarItemDisplay = ({
                 _id={_id}
                 text={text}
                 completed={completed}
-                toggleComplete={() => toggleComplete(_id as Id<"toDoItems">)}
+                toggleComplete={async () => {
+                  await toggleComplete(_id as Id<"toDoItems">);
+                }}
                 deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                 onDragStart={() => handleDragStart(_id)}
                 onDragEnd={() => handleDragEnd(_id)}
@@ -99,10 +153,14 @@ export const CalendarItemDisplay = ({
                 onDragEnter={() => handleDragEnter(_id)}
                 onDragLeave={() => handleDragLeave(_id)}
                 draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
+                mainOrder={mainOrder ?? 0}
                 type={type || "task"}
                 draggedItemId={draggedItemId}
                 setDraggedItemId={setDraggedItemId}
+                setChildDraggedOverItemId={setChildDraggedOverItemId}
+                childDraggedOverItemId={childDraggedOverItemId}
+                childDraggedItemId={childDraggedItemId}
+                setChildDraggedItemId={setChildDraggedItemId}
               />
             ))}
           </div>

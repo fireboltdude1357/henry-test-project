@@ -32,8 +32,8 @@ export const HomeDisplay = ({
     <div className="space-y-8">
       {/* Active Tasks */}
       {activeTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">
+        <div className="bg-[var(--surface-1)]/60 rounded-xl p-6 border border-[var(--border)] backdrop-blur-xl">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Active Tasks ({activeTasks.length})
           </h3>
           <div className="space-y-3">
@@ -43,7 +43,9 @@ export const HomeDisplay = ({
                 _id={_id}
                 text={text}
                 completed={completed}
-                toggleComplete={() => toggleComplete(_id as Id<"toDoItems">)}
+                toggleComplete={async () => {
+                  await toggleComplete(_id as Id<"toDoItems">);
+                }}
                 deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                 onDragStart={() => handleDragStart(_id)}
                 onDragEnd={() => handleDragEnd(_id)}
@@ -51,7 +53,7 @@ export const HomeDisplay = ({
                 onDragEnter={() => handleDragEnter(_id)}
                 onDragLeave={() => handleDragLeave(_id)}
                 draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
+                mainOrder={mainOrder || -1}
                 setAdditionParentId={setAdditionParentId}
                 type={type || "task"}
               />
@@ -88,7 +90,9 @@ export const HomeDisplay = ({
                 _id={_id}
                 text={text}
                 completed={completed}
-                toggleComplete={() => toggleComplete(_id as Id<"toDoItems">)}
+                toggleComplete={async () => {
+                  await toggleComplete(_id as Id<"toDoItems">);
+                }}
                 deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                 onDragStart={() => handleDragStart(_id)}
                 onDragEnd={() => handleDragEnd(_id)}
@@ -96,7 +100,7 @@ export const HomeDisplay = ({
                 onDragEnter={() => handleDragEnter(_id)}
                 onDragLeave={() => handleDragLeave(_id)}
                 draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder}
+                mainOrder={mainOrder || -1}
                 type={type || "task"}
                 setAdditionParentId={setAdditionParentId}
               />

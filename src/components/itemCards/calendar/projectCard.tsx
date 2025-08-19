@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { playCompletionPop } from "../../../utils/sounds";
 import { useState } from "react";
 import { ItemCard } from "./itemCard";
 
@@ -9,17 +10,20 @@ export const ProjectCard = ({
   text,
   completed,
   toggleComplete,
-  deleteItem,
+  // deleteItem is intentionally unused in this view
+  deleteItem: _unusedDelete, // eslint-disable-line @typescript-eslint/no-unused-vars
   onDragStart,
   onDragEnd,
   onDragOver,
   onDragEnter,
   onDragLeave,
   draggedOverItemId,
-  mainOrder,
+  // mainOrder,
   setAdditionParentId,
   draggedItemId,
   setDraggedItemId,
+  setChildDraggedOverItemId,
+  childDraggedOverItemId,
 }: {
   _id: string;
   text: string;
@@ -36,42 +40,56 @@ export const ProjectCard = ({
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
+  setChildDraggedOverItemId: (id: string | null) => void;
+  childDraggedOverItemId: string | null;
+  childDraggedItemId: string | null;
 }) => {
-  const isDraggedOver = draggedOverItemId === _id;
-  const updateOrder = useMutation(api.toDoItems.updateOrder);
-  const deleteChildItem = useMutation(api.toDoItems.deleteItem);
-  const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
-  const deleteProject = useMutation(api.toDoItems.deleteProject);
-  const [isExpanded, setIsExpanded] = useState(true);
-
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
   });
+  const isDraggingChildOfThisProject = Boolean(
+    draggedItemId && children?.some((c) => c._id === draggedItemId)
+  );
+  // Gate nested highlight: if this instance is used as a nested card (childDraggedOverItemId is used upstream),
+  // only show the bar when dragging a child of this project. Top-level usage remains unaffected.
+  const isDraggedOver =
+    draggedOverItemId === _id &&
+    (!childDraggedOverItemId || isDraggingChildOfThisProject);
+  const updateOrder = useMutation(api.toDoItems.updateOrder);
+  const deleteChildItem = useMutation(api.toDoItems.deleteItem);
+  const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
+  // const deleteProject = useMutation(api.toDoItems.deleteProject);
+  const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
+  const [isExpanded, setIsExpanded] = useState(true);
 
-  const [childDraggedOverItemId, setChildDraggedOverItemId] = useState<
-    string | null
-  >(null);
+  // children query moved above
+
   const handleDragStart = (id: string) => {
     setDraggedItemId(id);
     console.log("Started dragging item:", id);
     // You can add any additional logic here when drag starts
   };
 
-  const handleDragOver = (id: string, e: React.DragEvent) => {
-    // Set local child drag state for project-internal reordering
+  const handleDragOver = (id: string) => {
+    // Only log if it's a different item than the one being dragged
     if (
       draggedItemId &&
       draggedItemId !== id &&
       childDraggedOverItemId !== id
     ) {
-      const draggedOverChild = children?.find((item) => item._id === id);
-      if (draggedOverChild) {
-        setChildDraggedOverItemId(id);
-        console.log("Setting childDraggedOverItemId to:", id);
-      } else if (id === "child-bottom") {
-        setChildDraggedOverItemId(id);
-        console.log("Setting childDraggedOverItemId to bottom zone:", id);
+      // Only set nested dragged-over targets if we're dragging one of this project's children
+      if (isDraggingChildOfThisProject) {
+        const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(id);
+        if (isDateContainer) {
+          setChildDraggedOverItemId(id);
+        } else {
+          setChildDraggedOverItemId(id);
+        }
+      } else {
+        // Clear nested highlight for cross-layer drags
+        setChildDraggedOverItemId(null);
       }
+      // onDragOver?.(id, e);
     }
 
     // Also forward to parent for calendar-level handling
@@ -81,11 +99,15 @@ export const ProjectCard = ({
     console.log("================================================");
     console.log("childDraggedOverItemId", childDraggedOverItemId);
     if (childDraggedOverItemId) {
-      console.log("Finished dragging item in projectCard.tsx on line 67:", id);
+      console.log("Finished dragging item in projectCard.tsx on line 87:", id);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(
         childDraggedOverItemId
       );
+      const isDateItem = /^\d{4}-\d{2}-\d{2}[a-z0-9]+$/.test(
+        childDraggedOverItemId
+      );
       console.log("isDateContainer", isDateContainer);
+      console.log("isDateItem", isDateItem);
       const draggedItem = children?.find((item) => item._id === draggedItemId);
       const draggedOverItem = children?.find(
         (item) => item._id === childDraggedOverItemId
@@ -96,26 +118,28 @@ export const ProjectCard = ({
         draggedOverItem
       );
       console.log("Dragged over item id:", childDraggedOverItemId);
-      console.log(
-        "Dragged over item in projectCard.tsx on line 80:",
-        draggedOverItem
-      );
-      if (
-        draggedItem &&
-        (draggedOverItem || childDraggedOverItemId === "child-bottom")
-      ) {
+      console.log("Dragged over item:", draggedOverItem);
+      if (isDateItem && draggedItem) {
+        console.log("Assigning item to date:", childDraggedOverItemId);
+        try {
+          await assignItemToDate({
+            id: draggedItem._id as Id<"toDoItems">,
+            date: childDraggedOverItemId,
+          });
+        } catch (error) {
+          console.error("Failed to assign item to date:", error);
+        }
+      } else if (draggedItem && (draggedOverItem || isDateContainer)) {
         console.log("Dragged item and dragged over item CP");
         let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
         const maxMainOrder = (children?.length || 0) + 1;
 
         const movingItemOldOrder = draggedItem?.mainOrder || movingItemNewOrder;
-        if (childDraggedOverItemId === "child-bottom") {
+        if (isDateContainer) {
           movingItemNewOrder = maxMainOrder;
         }
         const difference = movingItemNewOrder - movingItemOldOrder;
         console.log("Difference:", difference);
-        // console.log("Moving item new order:", movingItemNewOrder);
-        // console.log("Moving item old order:", movingItemOldOrder);
         let interval = 0;
         if (difference > 0) {
           interval = 1;
@@ -123,43 +147,31 @@ export const ProjectCard = ({
         } else {
           interval = -1;
         }
-        // console.log("Updating order for item:", movingItemOldOrder);
-        //
-        console.log("Moving item new order:", movingItemNewOrder);
-        console.log("Moving item old order:", movingItemOldOrder);
         for (
           let i = movingItemOldOrder + interval;
           i !== movingItemNewOrder + interval;
           i += interval
         ) {
-          console.log("Updating order for item:", i);
-          const item = children?.find((item) => item.mainOrder === i);
+          const item = children?.find((item) => (item.mainOrder ?? -1) === i);
           if (item) {
             updateOrder({
               id: item._id as Id<"toDoItems">,
-              order: item.mainOrder - interval,
+              order: item.mainOrder! - interval,
             });
           }
         }
         updateOrder({
-          //   id: draggedItemId as Id<"toDoItems">,
           id: draggedItemId as Id<"toDoItems">,
           order: movingItemNewOrder,
         });
-        // updateOrder({
-        //   id: draggedOverItemId as Id<"toDoItems">,
-        //   order: draggedItem?.mainOrder || 0,
-        // });
       }
     }
     setDraggedItemId(null);
     setChildDraggedOverItemId(null);
-    console.log("Finished dragging item in projectCard.tsx on line 134:", id);
-    // You can add any additional logic here when drag ends
+    console.log("Finished dragging item:", id);
   };
 
   const handleDragEnter = (id: string) => {
-    // Set local child drag state and forward to parent
     if (
       draggedItemId &&
       draggedItemId !== id &&
@@ -180,26 +192,18 @@ export const ProjectCard = ({
   };
 
   const handleDragLeave = (id: string) => {
-    // Clear local child drag state when leaving
-    if (childDraggedOverItemId === id) {
-      setChildDraggedOverItemId(null);
-      console.log("Left child item, clearing childDraggedOverItemId:", id);
+    if (
+      draggedItemId &&
+      draggedItemId !== id &&
+      childDraggedOverItemId !== id
+    ) {
+      console.log("Left item:", id);
     }
 
     // Forward to parent
     onDragLeave?.(id);
   };
-  // console.log("children", children);
-  const handleDelete = () => {
-    deleteProject({ id: _id as Id<"toDoItems"> });
-    if (setAdditionParentId) {
-      setAdditionParentId(null);
-    }
-  };
 
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-  };
   return (
     <div className="relative">
       <div
@@ -213,7 +217,7 @@ export const ProjectCard = ({
           onDragEnd?.(_id);
         }}
         onDragOver={(e) => {
-          e.preventDefault(); // Allow dropping
+          e.preventDefault();
           onDragOver?.(_id, e);
         }}
         onDragEnter={() => {
@@ -237,7 +241,11 @@ export const ProjectCard = ({
           <input
             type="checkbox"
             checked={completed}
-            onChange={() => toggleComplete(_id)}
+            onChange={async () => {
+              const wasCompleted = completed;
+              await toggleComplete(_id);
+              if (!wasCompleted) playCompletionPop();
+            }}
             className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
               completed
                 ? "text-purple-600 focus:ring-purple-500"
@@ -245,8 +253,8 @@ export const ProjectCard = ({
             }`}
           />
           <button
-            onClick={toggleExpanded}
-            className="flex items-center text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
             title={isExpanded ? "Collapse project" : "Expand project"}
           >
             <svg
@@ -264,7 +272,6 @@ export const ProjectCard = ({
                 d="M9 5l7 7-7 7"
               />
             </svg>
-            📁
           </button>
           <span
             className={`flex-1 transition-colors duration-200 font-medium ${
@@ -274,53 +281,7 @@ export const ProjectCard = ({
             }`}
           >
             {text}
-            {children && children.length > 0 && (
-              <span className="ml-2 text-xs text-purple-400/70">
-                ({children.length} item{children.length !== 1 ? "s" : ""})
-              </span>
-            )}
           </span>
-          {setAdditionParentId && (
-            <button
-              onClick={() => setAdditionParentId(_id as Id<"toDoItems">)}
-              className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              title="Add child"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-            </button>
-          )}
-          <span className="text-purple-400 text-xs">({mainOrder})</span>
-          <button
-            onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-            title="Delete project"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -336,45 +297,29 @@ export const ProjectCard = ({
               _id={child._id}
               text={child.text}
               completed={child.completed}
-              toggleComplete={() =>
-                toggleChildComplete({ id: child._id as Id<"toDoItems"> })
-              }
+              toggleComplete={async () => {
+                await toggleChildComplete({ id: child._id as Id<"toDoItems"> });
+                playCompletionPop();
+              }}
               deleteItem={() =>
                 deleteChildItem({ id: child._id as Id<"toDoItems"> })
               }
               onDragStart={() => handleDragStart(child._id)}
               onDragEnd={() => handleDragEnd(child._id)}
-              onDragOver={(id, e) => handleDragOver(id, e)}
+              onDragOver={(id) => handleDragOver(id)}
               onDragEnter={() => handleDragEnter(child._id)}
               onDragLeave={() => handleDragLeave(child._id)}
               draggedOverItemId={childDraggedOverItemId}
-              mainOrder={child.mainOrder}
+              mainOrder={child.mainOrder ?? 0}
               setAdditionParentId={setAdditionParentId}
               type={child.type || "task"}
               draggedItemId={draggedItemId}
               setDraggedItemId={setDraggedItemId}
+              setChildDraggedOverItemId={setChildDraggedOverItemId}
+              childDraggedOverItemId={childDraggedOverItemId}
+              childDraggedItemId={null}
             />
           ))}
-          {/* Bottom drop zone for child items */}
-          <div
-            id="child-bottom"
-            onDragOver={(e) => {
-              e.preventDefault();
-              handleDragOver("child-bottom", e);
-            }}
-            onDragEnter={() => handleDragEnter("child-bottom")}
-            onDragLeave={() => handleDragLeave("child-bottom")}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleDragEnd("child-bottom");
-            }}
-            className="h-4 w-full relative"
-          >
-            {childDraggedOverItemId === "child-bottom" && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
-            )}
-          </div>
         </div>
       )}
     </div>

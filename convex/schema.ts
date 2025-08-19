@@ -21,7 +21,7 @@ const applicationTables = {
   toDoItems: defineTable({
     text: v.string(),
     completed: v.boolean(),
-    mainOrder: v.number(),
+    mainOrder: v.optional(v.number()),
     userId: v.id("users"),
     type: v.optional(
       v.union(v.literal("project"), v.literal("task"), v.literal("folder"))
@@ -35,7 +35,7 @@ const applicationTables = {
     .index("by_user_type_and_order", ["userId", "type", "mainOrder"])
     .index("by_user_day_order", ["userId", "dayOrder"])
     .index("by_parent", ["parentId", "mainOrder"])
-    .index("by_user_assigned_date", ["userId", "assignedDate"]),
+    .index("by_user_and_assigned_date", ["userId", "assignedDate"]),
   users: defineTable({
     name: v.string(),
     tokenIdentifier: v.string(),
@@ -45,7 +45,6 @@ const applicationTables = {
     .index("byExternalId", ["externalId"]),
   calendarDays: defineTable({
     date: v.string(),
-    dayOfWeek: v.number(),
     items: v.array(v.id("toDoItems")),
     userId: v.id("users"),
   }).index("by_user_and_date", ["userId", "date"]),

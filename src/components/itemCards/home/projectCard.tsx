@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useState } from "react";
+import { playCompletionPop } from "../../../utils/sounds";
 import { ItemCard } from "./itemCard";
 
 export const ProjectCard = ({
@@ -9,7 +10,8 @@ export const ProjectCard = ({
   text,
   completed,
   toggleComplete,
-  deleteItem,
+  // deleteItem is intentionally unused in this view
+  deleteItem: _unusedDelete, // eslint-disable-line @typescript-eslint/no-unused-vars
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -53,7 +55,7 @@ export const ProjectCard = ({
     // You can add any additional logic here when drag starts
   };
 
-  const handleDragOver = (id: string, e: React.DragEvent) => {
+  const handleDragOver = (id: string) => {
     // Only log if it's a different item than the one being dragged
     if (
       draggedItemId &&
@@ -66,7 +68,7 @@ export const ProjectCard = ({
   };
   const handleDragEnd = async (id: string) => {
     if (childDraggedOverItemId) {
-      console.log("Finished dragging item:", id);
+      console.log("Finished dragging item in projectCard.tsx on line 69:", id);
       const draggedItem = children?.find((item) => item._id === draggedItemId);
       const draggedOverItem = children?.find(
         (item) => item._id === childDraggedOverItemId
@@ -108,11 +110,11 @@ export const ProjectCard = ({
           i += interval
         ) {
           console.log("Updating order for item:", i);
-          const item = children?.find((item) => item.mainOrder === i);
+          const item = children?.find((item) => (item.mainOrder ?? -1) === i);
           if (item) {
             updateOrder({
               id: item._id as Id<"toDoItems">,
-              order: item.mainOrder - interval,
+              order: item.mainOrder! - interval,
             });
           }
         }
@@ -167,6 +169,8 @@ export const ProjectCard = ({
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
+  const completedChildren = children?.filter((child) => child.completed);
+  const uncompletedChildren = children?.filter((child) => !child.completed);
   return (
     <div className="relative">
       <div
@@ -199,7 +203,11 @@ export const ProjectCard = ({
           <input
             type="checkbox"
             checked={completed}
-            onChange={() => toggleComplete(_id)}
+            onChange={async () => {
+              const wasCompleted = completed;
+              await toggleComplete(_id);
+              if (!wasCompleted) playCompletionPop();
+            }}
             className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
               completed
                 ? "text-purple-600 focus:ring-purple-500"
@@ -236,9 +244,10 @@ export const ProjectCard = ({
             }`}
           >
             {text}
-            {children && children.length > 0 && (
+            {uncompletedChildren && uncompletedChildren.length > 0 && (
               <span className="ml-2 text-xs text-purple-400/70">
-                ({children.length} item{children.length !== 1 ? "s" : ""})
+                ({uncompletedChildren.length} item
+                {uncompletedChildren.length !== 1 ? "s" : ""})
               </span>
             )}
           </span>
@@ -290,27 +299,29 @@ export const ProjectCard = ({
         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-purple-500 rounded-full"></div>
       )}
 
-      {children && children.length > 0 && isExpanded && (
+      {uncompletedChildren && uncompletedChildren.length > 0 && isExpanded && (
         <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
-          {children.map((child) => (
+          {uncompletedChildren.map((child) => (
             <ItemCard
               key={child._id}
               _id={child._id}
               text={child.text}
               completed={child.completed}
-              toggleComplete={() =>
-                toggleChildComplete({ id: child._id as Id<"toDoItems"> })
-              }
+              toggleComplete={async () => {
+                const wasCompleted = child.completed;
+                await toggleChildComplete({ id: child._id as Id<"toDoItems"> });
+                if (!wasCompleted) playCompletionPop();
+              }}
               deleteItem={() =>
                 deleteChildItem({ id: child._id as Id<"toDoItems"> })
               }
               onDragStart={() => handleDragStart(child._id)}
               onDragEnd={() => handleDragEnd(child._id)}
-              onDragOver={(id, e) => handleDragOver(id, e)}
+              onDragOver={(id) => handleDragOver(id)}
               onDragEnter={() => handleDragEnter(child._id)}
               onDragLeave={() => handleDragLeave(child._id)}
               draggedOverItemId={childDraggedOverItemId}
-              mainOrder={child.mainOrder}
+              mainOrder={child.mainOrder ?? 0}
               setAdditionParentId={setAdditionParentId}
               type={child.type || "task"}
             />
@@ -320,7 +331,7 @@ export const ProjectCard = ({
             id="child-bottom"
             onDragOver={(e) => {
               e.preventDefault();
-              handleDragOver("child-bottom", e);
+              handleDragOver("child-bottom");
             }}
             onDragEnter={() => handleDragEnter("child-bottom")}
             onDragLeave={() => handleDragLeave("child-bottom")}
@@ -330,6 +341,28 @@ export const ProjectCard = ({
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 rounded-full"></div>
             )}
           </div>
+        </div>
+      )}
+      {completedChildren && completedChildren.length > 0 && isExpanded && (
+        <div className="ml-6 mt-3 flex flex-col gap-2 border-l-2 border-purple-700/30 pl-4">
+          {completedChildren.map((child) => (
+            <ItemCard
+              key={child._id}
+              _id={child._id}
+              text={child.text}
+              completed={child.completed}
+              toggleComplete={async () => {
+                const wasCompleted = child.completed;
+                await toggleChildComplete({ id: child._id as Id<"toDoItems"> });
+                if (!wasCompleted) playCompletionPop();
+              }}
+              deleteItem={() =>
+                deleteChildItem({ id: child._id as Id<"toDoItems"> })
+              }
+              mainOrder={child.mainOrder ?? 0}
+              type={child.type || "task"}
+            />
+          ))}
         </div>
       )}
     </div>

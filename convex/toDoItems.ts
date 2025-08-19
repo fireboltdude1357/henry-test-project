@@ -105,7 +105,68 @@ export const toggleComplete = mutation({
     if (toDoItem.userId !== userId._id) {
       throw new Error("To-do item does not belong to user");
     }
-    return await ctx.db.patch(args.id, { completed: !toDoItem.completed });
+
+    const newCompletedState = !toDoItem.completed;
+
+    if (newCompletedState) {
+      // Completing an item: remove its main order and propagate uncompleted tasks
+      const deletedOrder = toDoItem.mainOrder;
+
+      if (deletedOrder !== undefined) {
+        // Get all uncompleted items with order greater than the completed item's order
+        const itemsToUpdate = await ctx.db
+          .query("toDoItems")
+          .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+          .filter((q) =>
+            q.and(
+              q.gt(q.field("mainOrder"), deletedOrder),
+              q.eq(q.field("completed"), false),
+              q.eq(q.field("parentId"), toDoItem.parentId)
+            )
+          )
+          .collect();
+
+        // Update their orders to close the gap
+        for (const item of itemsToUpdate) {
+          if (item.mainOrder !== undefined) {
+            await ctx.db.patch(item._id, {
+              mainOrder: item.mainOrder - 1,
+            });
+          }
+        }
+      }
+
+      // Remove the main order from the completed item
+      return await ctx.db.patch(args.id, {
+        completed: newCompletedState,
+        mainOrder: undefined,
+      });
+    } else {
+      // Uncompleting an item: add it to the end of the order
+
+      // Get the highest order among uncompleted items
+      const uncompletedItems = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("completed"), false),
+            q.eq(q.field("parentId"), toDoItem.parentId)
+          )
+        )
+        .collect();
+
+      const maxOrder =
+        uncompletedItems.length > 0
+          ? Math.max(...uncompletedItems.map((item) => item.mainOrder || 0))
+          : 0;
+
+      // Assign the item to the end of the order
+      return await ctx.db.patch(args.id, {
+        completed: newCompletedState,
+        mainOrder: maxOrder + 1,
+      });
+    }
   },
 });
 
@@ -138,24 +199,48 @@ export const deleteItem = mutation({
 
     const deletedOrder = itemToDelete.mainOrder;
 
+    // If the item is assigned to a day, remove it from that day's list first
+    if (itemToDelete.assignedDate) {
+      const day = await ctx.db
+        .query("calendarDays")
+        .withIndex("by_user_and_date", (q) =>
+          q.eq("userId", userId._id).eq("date", itemToDelete.assignedDate!)
+        )
+        .unique();
+      if (day) {
+        await ctx.db.patch(day._id, {
+          items: day.items.filter((tid) => tid !== args.id),
+        });
+      }
+    }
+
     // Delete the item
     await ctx.db.delete(args.id);
 
-    // Get all items with order greater than the deleted item's order
-    const itemsToUpdate = await ctx.db
-      .query("toDoItems")
-      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-      .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
-      .collect();
+    let updatedCount = 0;
+    if (deletedOrder !== undefined) {
+      // Get all items with order greater than the deleted item's order
+      const itemsToUpdate = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+        .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+        .collect();
 
-    // Update their orders to close the gap
-    for (const item of itemsToUpdate) {
-      await ctx.db.patch(item._id, {
-        mainOrder: item.mainOrder - 1,
-      });
+      // Update their orders to close the gap
+      for (const item of itemsToUpdate) {
+        if (item.mainOrder !== undefined) {
+          await ctx.db.patch(item._id, {
+            mainOrder: item.mainOrder - 1,
+          });
+        }
+      }
+      updatedCount = itemsToUpdate.length;
     }
 
-    return { deletedOrder, updatedCount: itemsToUpdate.length };
+    return {
+      deletedOrder,
+      updatedCount,
+    };
   },
 });
 
@@ -211,21 +296,27 @@ export const deleteProject = mutation({
     // Delete the project itself
     await ctx.db.delete(args.id);
 
-    // Get all items with order greater than the deleted project's order
-    const itemsToUpdate = await ctx.db
-      .query("toDoItems")
-      .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-      .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
-      .collect();
+    let updatedCount = 0;
+    if (deletedOrder !== undefined) {
+      // Get all items with order greater than the deleted project's order
+      const itemsToUpdate = await ctx.db
+        .query("toDoItems")
+        .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
+        .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+        .collect();
 
-    // Update their orders to close the gap
-    for (const item of itemsToUpdate) {
-      await ctx.db.patch(item._id, {
-        mainOrder: item.mainOrder - 1,
-      });
+      // Update their orders to close the gap
+      for (const item of itemsToUpdate) {
+        if (item.mainOrder !== undefined) {
+          await ctx.db.patch(item._id, {
+            mainOrder: item.mainOrder - 1,
+          });
+        }
+      }
+      updatedCount = itemsToUpdate.length;
     }
 
-    return { deletedOrder, updatedCount: itemsToUpdate.length };
+    return { deletedOrder, updatedCount };
   },
 });
 
@@ -403,7 +494,11 @@ export const assignItemToDateAtPosition = mutation({
 export const assignItemToDate = mutation({
   args: {
     id: v.id("toDoItems"),
-    date: v.string(), // ISO date string (YYYY-MM-DD)
+    // "date" can be either an ISO date string (YYYY-MM-DD) or
+    // a concatenation of date + toDoItemId to indicate insertion
+    // before a specific item for precise ordering within a day.
+    // Example: "2025-01-13k3x9f2..." → date: 2025-01-13, beforeId: k3x9f2...
+    date: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -474,53 +569,62 @@ export const assignItemToDate = mutation({
     if (item.userId !== userId._id) {
       throw new Error("To-do item does not belong to user");
     }
+    // Parse date and optional beforeId from the incoming string.
+    const dateStr = args.date.substring(0, 10);
+    const maybeBeforeId: Id<"toDoItems"> | undefined =
+      args.date.length > 10
+        ? (args.date.substring(10) as Id<"toDoItems">)
+        : undefined;
 
-    // Store the previous assigned date for cleanup
-    const previousAssignedDate = item.assignedDate;
-    console.log("Previous assigned date:", previousAssignedDate);
-
-    // Update the item with new date and dayOrder
-    const result = await ctx.db.patch(args.id, {
-      assignedDate: args.date,
-      dayOrder: newDayOrder,
-    });
-
-    // If the item was previously assigned to a different date, clean up gaps in that date
-    if (previousAssignedDate && previousAssignedDate !== args.date) {
-      console.log("Cleaning up gaps in previous date:", previousAssignedDate);
-
-      // Get all remaining items on the previous date
-      const remainingItemsOnPreviousDate = await ctx.db
-        .query("toDoItems")
-        .withIndex("by_user_assigned_date", (q) =>
-          q.eq("userId", userId._id).eq("assignedDate", previousAssignedDate)
+    // If the item was previously assigned to a different date, remove it from that day
+    if (item.assignedDate && item.assignedDate !== dateStr) {
+      // Remove item from old calendar day
+      const oldCalendarDay = await ctx.db
+        .query("calendarDays")
+        .withIndex("by_user_and_date", (q) =>
+          q.eq("userId", userId._id).eq("date", item.assignedDate!)
         )
-        .collect();
-
-      console.log(
-        "Remaining items on previous date:",
-        remainingItemsOnPreviousDate.length
-      );
-
-      // Sort by current dayOrder and reassign sequential dayOrder values
-      const sortedItems = remainingItemsOnPreviousDate
-        .filter((remainingItem) => remainingItem.dayOrder != null)
-        .sort((a, b) => (a.dayOrder || 0) - (b.dayOrder || 0));
-
-      // Reassign dayOrder values starting from 1
-      for (let i = 0; i < sortedItems.length; i++) {
-        const newOrder = i + 1;
-        if (sortedItems[i].dayOrder !== newOrder) {
-          console.log(
-            `Updating item ${sortedItems[i].text} from dayOrder ${sortedItems[i].dayOrder} to ${newOrder}`
-          );
-          await ctx.db.patch(sortedItems[i]._id, {
-            dayOrder: newOrder,
-          });
-        }
+        .unique();
+      if (oldCalendarDay) {
+        await ctx.db.patch(oldCalendarDay._id, {
+          items: oldCalendarDay.items.filter((id) => id !== args.id),
+        });
       }
     }
+    // Check if calendar day already exists
+    const existingCalendarDay = await ctx.db
+      .query("calendarDays")
+      .withIndex("by_user_and_date", (q) =>
+        q.eq("userId", userId._id).eq("date", dateStr)
+      )
+      .unique();
 
-    return result;
+    if (existingCalendarDay) {
+      // Build new ordered items array, removing any prior occurrence first
+      let newItems = existingCalendarDay.items.filter((id) => id !== args.id);
+      if (maybeBeforeId) {
+        const insertBeforeIndex = newItems.findIndex(
+          (id) => id === maybeBeforeId
+        );
+        const boundedIndex =
+          insertBeforeIndex >= 0 ? insertBeforeIndex : newItems.length;
+        newItems = [
+          ...newItems.slice(0, boundedIndex),
+          args.id,
+          ...newItems.slice(boundedIndex),
+        ];
+      } else {
+        newItems.push(args.id);
+      }
+      await ctx.db.patch(existingCalendarDay._id, { items: newItems });
+    } else {
+      // Create new calendar day
+      await ctx.db.insert("calendarDays", {
+        date: dateStr,
+        items: [args.id],
+        userId: userId._id,
+      });
+    }
+    return await ctx.db.patch(args.id, { assignedDate: dateStr });
   },
 });

@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core palette for sleek dark theme */
+  --background: #0b0f19; /* deep blue/black */
+  --surface-1: rgba(17, 24, 39, 0.8); /* slate-900 w/ translucency */
+  --surface-2: rgba(15, 23, 42, 0.6);
+  --border: rgba(148, 163, 184, 0.15); /* slate-400 at low alpha */
+  --foreground: #e5e7eb; /* gray-200 */
+  --muted: #94a3b8; /* slate-400 */
+  --accent: #60a5fa; /* blue-400 */
+  --accent-2: #a78bfa; /* purple-400 */
 }
 
 @theme inline {
@@ -14,13 +21,56 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b0f19;
+    --foreground: #e5e7eb;
   }
 }
 
+/* Global app background with subtle gradients */
 body {
-  background: var(--background);
+  background:
+    radial-gradient(
+      1200px 600px at -10% -10%,
+      rgba(96, 165, 250, 0.08),
+      transparent 60%
+    ),
+    radial-gradient(
+      1000px 600px at 110% 0%,
+      rgba(167, 139, 250, 0.07),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #0b0f19 0%, #0b1020 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    var(--font-geist-sans),
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    sans-serif;
+}
+
+/* Smooth focus rings */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+}
+
+/* Subtle scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
 }
