@@ -3,6 +3,7 @@ import Image from "next/image";
 import { api } from "../../../convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { api as convexApi } from "../../../convex/_generated/api";
 
 type DateIdea = {
   title: string;
@@ -68,6 +69,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   const removeDateIdea = useMutation(api.peopleData.removeDateIdea);
   const getUploadUrl = useAction(api.peopleData.getUploadUrl);
   const getSignedUrls = useAction(api.peopleData.getSignedUrls);
+  const updateBasicInfo = useMutation(convexApi.peopleData.updateBasicInfo);
 
   type Category = "movies" | "books" | "tvShows" | "music" | "games" | "other";
   const categories: { key: Category; label: string }[] = [
@@ -731,6 +733,383 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   }
 
   function BasicInfo() {
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [isEditingBirthday, setIsEditingBirthday] = useState(false);
+    const [nameInput, setNameInput] = useState(personData?.name ?? "");
+    const [birthdayInput, setBirthdayInput] = useState(
+      personData?.birthday ?? ""
+    );
+
+    // Calendar modal state
+    const [showCalendar, setShowCalendar] = useState(false);
+
+    // Helpers for mm/dd/yyyy
+    const formatMMDDYYYY = (d: Date) => {
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    };
+    const parseMMDDYYYY = (s: string): Date | null => {
+      const m = /^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/.exec(s);
+      if (!m) return null;
+      const month = Number(m[1]);
+      const day = Number(m[2]);
+      const year = Number(m[3]);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      const d = new Date(year, month - 1, day);
+      if (isNaN(d.getTime())) return null;
+      return d;
+    };
+
+    const save = async () => {
+      await updateBasicInfo({
+        personId,
+        name: nameInput,
+        birthday: birthdayInput,
+      });
+      setIsEditingName(false);
+      setIsEditingBirthday(false);
+      setShowCalendar(false);
+    };
+
+    // Lightweight calendar modal
+    function CalendarModal({
+      initial,
+      onSelect,
+      onClose,
+    }: {
+      initial: string;
+      onSelect: (value: string) => void;
+      onClose: () => void;
+    }) {
+      const base = parseMMDDYYYY(initial) ?? new Date();
+      const [month, setMonth] = useState(base.getMonth());
+      const [year, setYear] = useState(base.getFullYear());
+
+      const start = new Date(year, month, 1);
+      const startDay = start.getDay(); // 0-6
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      const prevMonth = () => {
+        const d = new Date(year, month, 1);
+        d.setMonth(month - 1);
+        setMonth(d.getMonth());
+        setYear(d.getFullYear());
+      };
+      const nextMonth = () => {
+        const d = new Date(year, month, 1);
+        d.setMonth(month + 1);
+        setMonth(d.getMonth());
+        setYear(d.getFullYear());
+      };
+
+      const weeks: (number | null)[][] = [];
+      let current = 1;
+      for (let w = 0; w < 6; w++) {
+        const row: (number | null)[] = [];
+        for (let d = 0; d < 7; d++) {
+          const cellIndex = w * 7 + d;
+          if (cellIndex < startDay || current > daysInMonth) {
+            row.push(null);
+          } else {
+            row.push(current++);
+          }
+        }
+        weeks.push(row);
+        if (current > daysInMonth) break;
+      }
+
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+      const currentYear = new Date().getFullYear();
+      const years = Array.from(
+        { length: 200 },
+        (_, i) => currentYear - 150 + i
+      );
+
+      return (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={onClose}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface-1)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              padding: 12,
+              minWidth: 300,
+            }}
+          >
+            <div
+              style={{ display: "flex", alignItems: "center", marginBottom: 8 }}
+            >
+              <button
+                onClick={prevMonth}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--foreground)",
+                  cursor: "pointer",
+                }}
+              >
+                ‹
+              </button>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(Number(e.target.value))}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    background: "transparent",
+                    color: "var(--foreground)",
+                    padding: "6px 8px",
+                  }}
+                >
+                  {monthNames.map((m, idx) => (
+                    <option key={m} value={idx} style={{ color: "#000" }}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    background: "transparent",
+                    color: "var(--foreground)",
+                    padding: "6px 8px",
+                  }}
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y} style={{ color: "#000" }}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={nextMonth}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--foreground)",
+                  cursor: "pointer",
+                }}
+              >
+                ›
+              </button>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gap: 4,
+              }}
+            >
+              {dayNames.map((d) => (
+                <div
+                  key={d}
+                  style={{
+                    textAlign: "center",
+                    color: "var(--muted)",
+                    fontSize: 12,
+                  }}
+                >
+                  {d}
+                </div>
+              ))}
+              {weeks.map((row, ri) =>
+                row.map((day, ci) => (
+                  <button
+                    key={`${ri}-${ci}`}
+                    disabled={day === null}
+                    onClick={() => {
+                      if (day === null) return;
+                      const selected = new Date(year, month, day);
+                      onSelect(formatMMDDYYYY(selected));
+                      onClose();
+                    }}
+                    style={{
+                      height: 34,
+                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      background: day ? "transparent" : "var(--surface-2)",
+                      color: "var(--foreground)",
+                      cursor: day ? "pointer" : "default",
+                    }}
+                  >
+                    {day ?? ""}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const renderRow = (
+      label: string,
+      value: string | undefined,
+      isEditing: boolean,
+      setIsEditing: (b: boolean) => void,
+      input: string,
+      setInput: (v: string) => void,
+      placeholder: string,
+      isDate?: boolean
+    ) => {
+      const computeDaysUntil = (s?: string | null): number | null => {
+        if (!s) return null;
+        const d = parseMMDDYYYY(s);
+        if (!d) return null;
+        const now = new Date();
+        const thisYear = new Date(now.getFullYear(), d.getMonth(), d.getDate());
+        const next =
+          thisYear < now
+            ? new Date(now.getFullYear() + 1, d.getMonth(), d.getDate())
+            : thisYear;
+        const diffMs = next.getTime() - now.getTime();
+        return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      };
+      // Choose source based on editing state
+      const daysUntil = isDate
+        ? computeDaysUntil(isEditing ? input : (value ?? null))
+        : null;
+      const hue =
+        daysUntil !== null
+          ? Math.max(
+              0,
+              Math.min(120, 120 * (1 - Math.min(daysUntil, 365) / 365))
+            )
+          : null;
+      const daysBadge =
+        daysUntil !== null ? (
+          <span style={{ color: `hsl(${hue} 80% 60%)`, fontSize: 13 }}>
+            {daysUntil === 0 ? "Today" : `${daysUntil} days`}
+          </span>
+        ) : null;
+
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 120, color: "var(--muted)" }}>{label}</div>
+          {!value || isEditing ? (
+            <>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={placeholder}
+                style={{
+                  flex: 1,
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  background: "transparent",
+                  color: "var(--foreground)",
+                }}
+              />
+              {isDate && (
+                <button
+                  onClick={() => setShowCalendar(true)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border)",
+                    background: "transparent",
+                    color: "var(--foreground)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Pick
+                </button>
+              )}
+              {isDate && daysBadge}
+              <button
+                onClick={save}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--foreground)",
+                  cursor: "pointer",
+                }}
+              >
+                Save
+              </button>
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <span>{value}</span>
+                {isDate && daysBadge}
+              </div>
+              <button
+                onClick={() => setIsEditing(true)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--foreground)",
+                  cursor: "pointer",
+                }}
+              >
+                Edit
+              </button>
+            </>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div
         style={{
@@ -738,12 +1117,37 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
           border: "1px solid var(--border)",
           borderRadius: 12,
           padding: 16,
+          display: "grid",
+          gap: 12,
         }}
       >
-        <div style={{ fontSize: 18, fontWeight: 600 }}>{personData?.name}</div>
-        <div style={{ color: "var(--muted)", marginTop: 6 }}>
-          Birthday: {personData?.birthday || "—"}
-        </div>
+        <div style={{ fontSize: 18, fontWeight: 600 }}>Basic Info</div>
+        {renderRow(
+          "Name",
+          personData?.name,
+          isEditingName,
+          setIsEditingName,
+          nameInput,
+          setNameInput,
+          "Enter name"
+        )}
+        {renderRow(
+          "Birthday",
+          personData?.birthday,
+          isEditingBirthday,
+          setIsEditingBirthday,
+          birthdayInput,
+          setBirthdayInput,
+          "mm/dd/yyyy",
+          true
+        )}
+        {showCalendar && (
+          <CalendarModal
+            initial={birthdayInput}
+            onSelect={(val) => setBirthdayInput(val)}
+            onClose={() => setShowCalendar(false)}
+          />
+        )}
       </div>
     );
   }

@@ -804,6 +804,41 @@ export const removeDateIdea = mutation({
   },
 });
 
+// Basic info updates (name, birthday)
+export const updateBasicInfo = mutation({
+  args: {
+    personId: v.id("people"),
+    name: v.optional(v.string()),
+    birthday: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+
+    const patch: Record<string, unknown> = {};
+    if (typeof args.name === "string") patch.name = args.name;
+    if (typeof args.birthday === "string") patch.birthday = args.birthday;
+
+    if (Object.keys(patch).length === 0) return peopleDataDoc._id;
+
+    await ctx.db.patch(peopleDataDoc._id, patch);
+    return peopleDataDoc._id;
+  },
+});
+
 // File uploads for date ideas photos
 export const getUploadUrl = action({
   args: {},
