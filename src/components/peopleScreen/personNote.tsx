@@ -47,6 +47,14 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
     await addItem({ personId, category, text });
   };
 
+  // Helper: sanitize image src values (skip invalid values like "N/A")
+  function safeImageSrc(src?: string) {
+    if (!src) return undefined;
+    if (src === "N/A") return undefined;
+    if (src.startsWith("http://") || src.startsWith("https://")) return src;
+    return undefined;
+  }
+
   function Section({ keyName, label }: { keyName: Category; label: string }) {
     const items = personData?.[keyName] as
       | { text: string; completed: boolean }[]
@@ -225,15 +233,15 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                         borderRadius: 10,
                         background: "var(--surface-2)",
                         display: "grid",
-                        gridTemplateColumns: details.poster
+                        gridTemplateColumns: safeImageSrc(details.poster)
                           ? "64px 1fr"
                           : "1fr",
                         gap: 12,
                       }}
                     >
-                      {details.poster && (
+                      {safeImageSrc(details.poster) && (
                         <Image
-                          src={details.poster}
+                          src={safeImageSrc(details.poster) as string}
                           alt={details.title}
                           width={64}
                           height={96}
@@ -568,14 +576,16 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                       <div
                         style={{
                           display: "grid",
-                          gridTemplateColumns: s.Poster ? "40px 1fr" : "1fr",
+                          gridTemplateColumns: safeImageSrc(s.Poster)
+                            ? "40px 1fr"
+                            : "1fr",
                           gap: 10,
                           padding: "10px 12px",
                         }}
                       >
-                        {s.Poster && (
+                        {safeImageSrc(s.Poster) && (
                           <Image
-                            src={s.Poster}
+                            src={safeImageSrc(s.Poster) as string}
                             alt={s.Title}
                             width={40}
                             height={60}
