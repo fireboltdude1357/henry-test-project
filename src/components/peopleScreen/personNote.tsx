@@ -4,6 +4,52 @@ import { api } from "../../../convex/_generated/api";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { Id } from "../../../convex/_generated/dataModel";
 
+type DateIdea = {
+  title: string;
+  links: string[];
+  notes: string;
+  photos: string[];
+};
+
+type DateIdeaDraft = {
+  title: string;
+  links: string[];
+  notes: string;
+  photos: string[];
+  linkInput: string;
+  photoInput: string;
+};
+
+function safeImageSrc(src?: string) {
+  if (!src) return undefined;
+  if (src === "N/A") return undefined;
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  return undefined;
+}
+
+type PersonDataForDateIdeas = { dateIdeas?: DateIdea[] } | null | undefined;
+
+type AddDateIdeaFn = (args: {
+  personId: Id<"people">;
+  title: string;
+  links: string[];
+  notes: string;
+  photos: string[];
+}) => Promise<unknown>;
+
+type RemoveDateIdeaFn = (args: {
+  personId: Id<"people">;
+  index: number;
+}) => Promise<unknown>;
+
+type GetUploadUrlFn = (
+  args: Record<string, never>
+) => Promise<{ uploadUrl: string }>;
+
+type GetSignedUrlsFn = (args: {
+  ids: Id<"_storage">[];
+}) => Promise<{ id: Id<"_storage">; url: string | null }[]>;
+
 export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   const personData = useQuery(api.peopleData.get, {
     personId: personId,
@@ -18,6 +64,10 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   const addTvShowByImdbId = useAction(api.peopleData.addTvShowByImdbId);
   const searchBooks = useAction(api.peopleData.searchBooks);
   const addBookByKey = useAction(api.peopleData.addBookByKey);
+  const addDateIdea = useMutation(api.peopleData.addDateIdea);
+  const removeDateIdea = useMutation(api.peopleData.removeDateIdea);
+  const getUploadUrl = useAction(api.peopleData.getUploadUrl);
+  const getSignedUrls = useAction(api.peopleData.getSignedUrls);
 
   type Category = "movies" | "books" | "tvShows" | "music" | "games" | "other";
   const categories: { key: Category; label: string }[] = [
@@ -47,13 +97,24 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
     await addItem({ personId, category, text });
   };
 
-  // Helper: sanitize image src values (skip invalid values like "N/A")
-  function safeImageSrc(src?: string) {
-    if (!src) return undefined;
-    if (src === "N/A") return undefined;
-    if (src.startsWith("http://") || src.startsWith("https://")) return src;
-    return undefined;
-  }
+  // Tabs
+  type TabKey = "basic" | Category | "dateIdeas";
+  const [activeTab, setActiveTab] = useState<TabKey>("basic");
+  const allTabs: { key: TabKey; label: string }[] = [
+    { key: "basic", label: "Basic Info" },
+    ...categories,
+    { key: "dateIdeas", label: "Date Ideas" },
+  ];
+
+  // Persist Date Ideas draft while navigating tabs
+  const [dateIdeaDraft, setDateIdeaDraft] = useState<DateIdeaDraft>({
+    title: "",
+    links: [],
+    notes: "",
+    photos: [],
+    linkInput: "",
+    photoInput: "",
+  });
 
   function Section({ keyName, label }: { keyName: Category; label: string }) {
     const items = personData?.[keyName] as
@@ -285,6 +346,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
         )}
         {keyName === "movies" ? (
           <MoviesInput
+            placeholderText="Add a movie..."
             onSubmitText={(value) => handleAdd(keyName, value)}
             onChooseSuggestion={async (s) => {
               await addMovieByImdbId({
@@ -299,6 +361,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
           />
         ) : keyName === "tvShows" ? (
           <MoviesInput
+            placeholderText="Add a TV show..."
             onSubmitText={(value) => handleAdd(keyName, value)}
             onChooseSuggestion={async (s) => {
               await addTvShowByImdbId({
@@ -313,6 +376,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
           />
         ) : keyName === "books" ? (
           <MoviesInput
+            placeholderText="Add a book..."
             onSubmitText={(value) => handleAdd(keyName, value)}
             onChooseSuggestion={async (s: {
               imdbID: string;
@@ -411,10 +475,12 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
   }
 
   function MoviesInput({
+    placeholderText = "Add a movie...",
     onSubmitText,
     onChooseSuggestion,
     onSearch,
   }: {
+    placeholderText?: string;
     onSubmitText: (value: string) => void;
     onChooseSuggestion: (s: {
       imdbID: string;
@@ -496,7 +562,7 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
                 setOpen(false);
               }
             }}
-            placeholder={"Add a movie..."}
+            placeholder={placeholderText}
             style={{
               flex: 1,
               border: "1px solid var(--border)",
@@ -663,15 +729,482 @@ export default function PersonNote({ personId }: { personId: Id<"people"> }) {
       </svg>
     );
   }
+
+  function BasicInfo() {
+    return (
+      <div
+        style={{
+          background: "var(--surface-1)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: 16,
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 600 }}>{personData?.name}</div>
+        <div style={{ color: "var(--muted)", marginTop: 6 }}>
+          Birthday: {personData?.birthday || "—"}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div>
-        <h1>{personData?.name}</h1>
-        <p>{personData?.birthday}</p>
-        {categories.map(({ key, label }) => (
-          <Section key={key} keyName={key} label={label} />
-        ))}
+        {/* Tab bar */}
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 12,
+            borderBottom: "1px solid var(--border)",
+            overflowX: "auto",
+            paddingBottom: 8,
+          }}
+        >
+          {allTabs.map((t) => {
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                data-selected={isActive ? "true" : "false"}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  background: isActive ? "var(--surface-2)" : "transparent",
+                  color: "var(--foreground)",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  boxShadow: isActive
+                    ? "0 0 0 1px var(--accent) inset"
+                    : "none",
+                  fontWeight: isActive ? 700 : 500,
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active tab content */}
+        {activeTab === "basic" ? (
+          <BasicInfo />
+        ) : activeTab === "dateIdeas" ? (
+          <DateIdeasView
+            personId={personId}
+            personData={personData as PersonDataForDateIdeas}
+            draft={dateIdeaDraft}
+            setDraft={setDateIdeaDraft}
+            addDateIdea={addDateIdea}
+            removeDateIdea={removeDateIdea}
+            getUploadUrl={getUploadUrl}
+            getSignedUrls={getSignedUrls}
+          />
+        ) : (
+          <Section
+            keyName={activeTab as Category}
+            label={categories.find((c) => c.key === activeTab)?.label || ""}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+function DateIdeasView({
+  personId,
+  personData,
+  draft,
+  setDraft,
+  addDateIdea,
+  removeDateIdea,
+  getUploadUrl,
+  getSignedUrls,
+}: {
+  personId: Id<"people">;
+  personData: PersonDataForDateIdeas;
+  draft: DateIdeaDraft;
+  setDraft: React.Dispatch<React.SetStateAction<DateIdeaDraft>>;
+  addDateIdea: AddDateIdeaFn;
+  removeDateIdea: RemoveDateIdeaFn;
+  getUploadUrl: GetUploadUrlFn;
+  getSignedUrls: GetSignedUrlsFn;
+}) {
+  const ideas = (personData?.dateIdeas as DateIdea[] | undefined) || [];
+  const [isDragging, setIsDragging] = useState(false);
+
+  const addLink = () => {
+    const l = draft.linkInput.trim();
+    if (!l) return;
+    setDraft((d) => ({ ...d, links: [...d.links, l], linkInput: "" }));
+  };
+  const addPhoto = () => {
+    const p = draft.photoInput.trim();
+    if (!p) return;
+    setDraft((d) => ({ ...d, photos: [...d.photos, p], photoInput: "" }));
+  };
+
+  async function uploadFiles(files: FileList | File[]) {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const { uploadUrl } = await getUploadUrl({});
+    const uploadedIds: Id<"_storage">[] = [];
+    for (const file of list) {
+      // Convex expects the raw file body with the correct Content-Type header
+      const contentType =
+        file.type ||
+        (file.name.endsWith(".png")
+          ? "image/png"
+          : file.name.match(/\.jpe?g$/i)
+            ? "image/jpeg"
+            : "application/octet-stream");
+      const resp = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": contentType },
+        body: file,
+      });
+      if (!resp.ok) continue;
+      const json = (await resp.json()) as { storageId: Id<"_storage"> };
+      uploadedIds.push(json.storageId);
+    }
+    if (uploadedIds.length > 0) {
+      const signed = await getSignedUrls({ ids: uploadedIds });
+      const urls = signed
+        .map((s) => s.url)
+        .filter((u): u is string => typeof u === "string");
+      if (urls.length > 0)
+        setDraft((d) => ({ ...d, photos: [...d.photos, ...urls] }));
+    }
+  }
+
+  const onDrop: React.DragEventHandler<HTMLDivElement> = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await uploadFiles(e.dataTransfer.files);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const onPaste: React.ClipboardEventHandler<
+    HTMLTextAreaElement | HTMLDivElement
+  > = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length > 0) await uploadFiles(files);
+  };
+
+  const saveIdea = async () => {
+    if (!draft.title.trim()) return;
+    await addDateIdea({
+      personId,
+      title: draft.title.trim(),
+      links: draft.links,
+      notes: draft.notes,
+      photos: draft.photos,
+    });
+    setDraft({
+      title: "",
+      links: [],
+      notes: "",
+      photos: [],
+      linkInput: "",
+      photoInput: "",
+    });
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div
+        style={{
+          background: "var(--surface-1)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: 12,
+        }}
+      >
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            value={draft.title}
+            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+            placeholder="Date idea title"
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              background: "transparent",
+              color: "var(--foreground)",
+            }}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={draft.linkInput}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, linkInput: e.target.value }))
+              }
+              placeholder="Add helpful link (https://...)"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addLink();
+              }}
+              style={{
+                flex: 1,
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            />
+            <button
+              onClick={addLink}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            >
+              Add link
+            </button>
+          </div>
+          {draft.links.length > 0 && (
+            <ul style={{ listStyle: "disc", paddingLeft: 20, margin: 0 }}>
+              {draft.links.map((l, i) => (
+                <li key={i} style={{ color: "var(--muted)" }}>
+                  {l}
+                </li>
+              ))}
+            </ul>
+          )}
+          <textarea
+            value={draft.notes}
+            onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+            placeholder="Notes"
+            rows={4}
+            onPaste={onPaste}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              background: "transparent",
+              color: "var(--foreground)",
+              resize: "vertical",
+            }}
+          />
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={onDrop}
+            onPaste={onPaste}
+            style={{
+              border: `1px dashed ${isDragging ? "var(--accent)" : "var(--border)"}`,
+              borderRadius: 10,
+              padding: 12,
+              background: "var(--surface-2)",
+              color: "var(--muted)",
+            }}
+          >
+            Drag & drop photos here, paste images, or add a photo URL below.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={draft.photoInput}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, photoInput: e.target.value }))
+              }
+              placeholder="Add photo URL (https://...)"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addPhoto();
+              }}
+              style={{
+                flex: 1,
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            />
+            <button
+              onClick={addPhoto}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            >
+              Add photo
+            </button>
+          </div>
+          {draft.photos.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                gap: 8,
+              }}
+            >
+              {draft.photos.map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    background: "var(--surface-2)",
+                  }}
+                >
+                  {safeImageSrc(p) ? (
+                    <img
+                      src={safeImageSrc(p) as string}
+                      alt={`photo-${i}`}
+                      style={{ width: "100%", height: 180, objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div style={{ padding: 12, color: "var(--muted)" }}>
+                      Invalid URL
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={saveIdea}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            >
+              Save idea
+            </button>
+          </div>
+        </div>
+      </div>
+      {ideas && ideas.length > 0 && (
+        <div
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            padding: 12,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Saved ideas</div>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            {ideas.map((idea, idx) => (
+              <li
+                key={idx}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <div style={{ fontWeight: 600, flex: 1 }}>{idea.title}</div>
+                  <button
+                    onClick={() => removeDateIdea({ personId, index: idx })}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1px solid var(--border)",
+                      background: "transparent",
+                      color: "#ef4444",
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+                {idea.links?.length > 0 && (
+                  <ul
+                    style={{ listStyle: "disc", paddingLeft: 20, marginTop: 6 }}
+                  >
+                    {idea.links.map((l, i) => (
+                      <li key={i} style={{ color: "var(--muted)" }}>
+                        {l}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {idea.notes && (
+                  <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                    {idea.notes}
+                  </div>
+                )}
+                {idea.photos?.length > 0 && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(100px, 1fr))",
+                      gap: 8,
+                      marginTop: 8,
+                    }}
+                  >
+                    {idea.photos.map((p, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          border: "1px solid var(--border)",
+                          borderRadius: 8,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {safeImageSrc(p) ? (
+                          <img
+                            src={safeImageSrc(p) as string}
+                            alt={`photo-${i}`}
+                            style={{
+                              width: "100%",
+                              height: 180,
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <div style={{ padding: 12, color: "var(--muted)" }}>
+                            Invalid URL
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

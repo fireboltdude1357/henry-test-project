@@ -60,71 +60,93 @@ const applicationTables = {
   }).index("by_user", ["userId"]),
   peopleData: defineTable({
     personId: v.id("people"),
-    birthday: v.string(),
-    movies: v.array(
-      v.object({
-        text: v.string(),
-        completed: v.boolean(),
-        details: v.optional(
-          v.object({
-            imdbId: v.string(),
-            title: v.string(),
-            year: v.optional(v.string()),
-            poster: v.optional(v.string()),
-            runtime: v.optional(v.string()),
-            genre: v.optional(v.string()),
-            plot: v.optional(v.string()),
-            ratings: v.optional(
-              v.array(v.object({ source: v.string(), value: v.string() }))
-            ),
-          })
-        ),
-      })
+    birthday: v.optional(v.string()),
+    movies: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          completed: v.boolean(),
+          details: v.optional(
+            v.object({
+              imdbId: v.string(),
+              title: v.string(),
+              year: v.optional(v.string()),
+              poster: v.optional(v.string()),
+              runtime: v.optional(v.string()),
+              genre: v.optional(v.string()),
+              plot: v.optional(v.string()),
+              ratings: v.optional(
+                v.array(v.object({ source: v.string(), value: v.string() }))
+              ),
+            })
+          ),
+        })
+      )
     ),
-    books: v.array(
-      v.object({
-        text: v.string(),
-        completed: v.boolean(),
-        details: v.optional(
-          v.object({
-            // Open Library work key or other ID
-            openLibraryId: v.string(),
-            title: v.string(),
-            year: v.optional(v.string()),
-            // Keep naming consistent with UI rendering that expects `poster`
-            poster: v.optional(v.string()),
-            runtime: v.optional(v.string()), // pages
-            genre: v.optional(v.string()), // subjects
-            plot: v.optional(v.string()), // description
-          })
-        ),
-      })
+    books: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          completed: v.boolean(),
+          details: v.optional(
+            v.object({
+              // Open Library work key or other ID
+              openLibraryId: v.string(),
+              title: v.string(),
+              year: v.optional(v.string()),
+              // Keep naming consistent with UI rendering that expects `poster`
+              poster: v.optional(v.string()),
+              runtime: v.optional(v.string()), // pages
+              genre: v.optional(v.string()), // subjects
+              plot: v.optional(v.string()), // description
+            })
+          ),
+        })
+      )
     ),
-    tvShows: v.array(
-      v.object({
-        text: v.string(),
-        completed: v.boolean(),
-        details: v.optional(
-          v.object({
-            imdbId: v.string(),
-            title: v.string(),
-            year: v.optional(v.string()),
-            poster: v.optional(v.string()),
-            runtime: v.optional(v.string()),
-            genre: v.optional(v.string()),
-            plot: v.optional(v.string()),
-            ratings: v.optional(
-              v.array(v.object({ source: v.string(), value: v.string() }))
-            ),
-          })
-        ),
-      })
+    tvShows: v.optional(
+      v.array(
+        v.object({
+          text: v.string(),
+          completed: v.boolean(),
+          details: v.optional(
+            v.object({
+              imdbId: v.string(),
+              title: v.string(),
+              year: v.optional(v.string()),
+              poster: v.optional(v.string()),
+              runtime: v.optional(v.string()),
+              genre: v.optional(v.string()),
+              plot: v.optional(v.string()),
+              ratings: v.optional(
+                v.array(v.object({ source: v.string(), value: v.string() }))
+              ),
+            })
+          ),
+        })
+      )
     ),
-    music: v.array(v.object({ text: v.string(), completed: v.boolean() })),
-    games: v.array(v.object({ text: v.string(), completed: v.boolean() })),
-    other: v.array(v.object({ text: v.string(), completed: v.boolean() })),
+    music: v.optional(
+      v.array(v.object({ text: v.string(), completed: v.boolean() }))
+    ),
+    games: v.optional(
+      v.array(v.object({ text: v.string(), completed: v.boolean() }))
+    ),
+    other: v.optional(
+      v.array(v.object({ text: v.string(), completed: v.boolean() }))
+    ),
+    dateIdeas: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          links: v.array(v.string()),
+          notes: v.string(),
+          photos: v.array(v.string()), // photo URLs for now; can migrate to Convex storage IDs later
+        })
+      )
+    ),
     userId: v.id("users"),
-    name: v.string(),
+    name: v.optional(v.string()),
   }).index("by_person", ["personId"]),
 };
 

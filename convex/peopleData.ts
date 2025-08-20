@@ -250,6 +250,7 @@ export const removeItem = mutation({
 
 // Action: search movies via OMDb (requires OMDB_API_KEY env var)
 import { action } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 
 export const searchMovies = action({
@@ -645,6 +646,182 @@ export const addBookWithDetails = mutation({
     ];
     await ctx.db.patch(peopleDataDoc._id, { books: updatedBooks });
     return peopleDataDoc._id;
+  },
+});
+
+// Date ideas mutations
+export const addDateIdea = mutation({
+  args: {
+    personId: v.id("people"),
+    title: v.string(),
+    links: v.array(v.string()),
+    notes: v.string(),
+    photos: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+
+    const updated = [
+      ...(peopleDataDoc.dateIdeas as unknown as {
+        title: string;
+        links: string[];
+        notes: string;
+        photos: string[];
+      }[]),
+      {
+        title: args.title,
+        links: args.links,
+        notes: args.notes,
+        photos: args.photos,
+      },
+    ];
+    await ctx.db.patch(peopleDataDoc._id, { dateIdeas: updated });
+    return peopleDataDoc._id;
+  },
+});
+
+export const updateDateIdea = mutation({
+  args: {
+    personId: v.id("people"),
+    index: v.number(),
+    title: v.optional(v.string()),
+    links: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+    photos: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+
+    const ideas = peopleDataDoc.dateIdeas as unknown as {
+      title: string;
+      links: string[];
+      notes: string;
+      photos: string[];
+    }[];
+    if (args.index < 0 || args.index >= ideas.length)
+      throw new Error("Index out of bounds");
+
+    const updated = ideas.map((idea, i) =>
+      i === args.index
+        ? {
+            title: args.title ?? idea.title,
+            links: args.links ?? idea.links,
+            notes: args.notes ?? idea.notes,
+            photos: args.photos ?? idea.photos,
+          }
+        : idea
+    );
+
+    await ctx.db.patch(peopleDataDoc._id, { dateIdeas: updated });
+    return peopleDataDoc._id;
+  },
+});
+
+export const removeDateIdea = mutation({
+  args: { personId: v.id("people"), index: v.number() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+    const ideas = peopleDataDoc.dateIdeas as unknown as {
+      title: string;
+      links: string[];
+      notes: string;
+      photos: string[];
+    }[];
+    if (args.index < 0 || args.index >= ideas.length)
+      throw new Error("Index out of bounds");
+
+    // Try to delete any Convex storage files referenced by signed URLs
+    const ideaToDelete = ideas[args.index];
+    const storageIdsToDelete: string[] = [];
+    for (const url of ideaToDelete.photos || []) {
+      try {
+        const u = new URL(url);
+        // Expect path like /api/storage/<id>
+        const segments = u.pathname.split("/").filter(Boolean);
+        const storageIndex = segments.findIndex((s) => s === "storage");
+        const idCandidate =
+          storageIndex >= 0
+            ? segments[storageIndex + 1]
+            : segments[segments.length - 1];
+        if (idCandidate && idCandidate.length > 0)
+          storageIdsToDelete.push(idCandidate);
+      } catch (_e) {
+        // Ignore unparsable URLs (external images)
+      }
+    }
+    for (const sid of storageIdsToDelete) {
+      try {
+        await ctx.storage.delete(sid as unknown as Id<"_storage">);
+      } catch (_e) {
+        // Ignore failures; proceed to remove the idea
+      }
+    }
+
+    const updated = ideas.filter((_, i) => i !== args.index);
+    await ctx.db.patch(peopleDataDoc._id, { dateIdeas: updated });
+    return peopleDataDoc._id;
+  },
+});
+
+// File uploads for date ideas photos
+export const getUploadUrl = action({
+  args: {},
+  handler: async (ctx) => {
+    const url = await ctx.storage.generateUploadUrl();
+    return { uploadUrl: url };
+  },
+});
+
+export const getSignedUrls = action({
+  args: { ids: v.array(v.id("_storage")) },
+  handler: async (ctx, args) => {
+    const results: { id: Id<"_storage">; url: string | null }[] = [];
+    for (const id of args.ids) {
+      const url = await ctx.storage.getUrl(id);
+      results.push({ id, url });
+    }
+    return results;
   },
 });
 

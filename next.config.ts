@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
       // Open Library covers
       { protocol: "http", hostname: "covers.openlibrary.org" },
       { protocol: "https", hostname: "covers.openlibrary.org" },
+      // Convex storage signed URLs
+      { protocol: "https", hostname: "*.convex.cloud" },
+      { protocol: "http", hostname: "*.convex.cloud" },
     ],
   },
 };

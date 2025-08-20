@@ -34,6 +34,7 @@ export const create = mutation({
       music: [],
       games: [],
       other: [],
+      dateIdeas: [],
     });
     return personRsp;
   },
