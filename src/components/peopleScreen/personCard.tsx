@@ -21,7 +21,7 @@ export const PersonCard = ({
         <img
           src={person.photo}
           alt={person.name}
-          className="absolute inset-0 w-full h-full object-cover opacity-40"
+          className="absolute inset-0 w-full h-full object-cover opacity-40 rounded-none"
         />
       )}
       <div className="relative whitespace-pre-line break-words text-slate-200">

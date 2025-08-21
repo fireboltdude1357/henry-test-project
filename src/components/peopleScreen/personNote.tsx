@@ -184,7 +184,8 @@ export default function PersonNote({
     w: 0,
     h: 0,
   });
-  const cropBoxSize = 240;
+  const cropBoxWidth = 240;
+  const cropBoxHeight = 360;
 
   async function uploadProfilePhoto(files: FileList | File[]) {
     const list = Array.from(files);
@@ -1959,7 +1960,7 @@ export default function PersonNote({
                 style={{
                   width: 120,
                   height: 120,
-                  borderRadius: "50%",
+                  borderRadius: 10,
                   overflow: "hidden",
                   border: "1px solid var(--border)",
                   marginBottom: 8,
@@ -2111,9 +2112,9 @@ export default function PersonNote({
               <div style={{ fontWeight: 600 }}>Crop Photo</div>
               <div
                 style={{
-                  width: cropBoxSize,
-                  height: cropBoxSize,
-                  borderRadius: "50%",
+                  width: cropBoxWidth,
+                  height: cropBoxHeight,
+                  borderRadius: 10,
                   overflow: "hidden",
                   border: "1px solid var(--border)",
                   position: "relative",
@@ -2194,9 +2195,8 @@ export default function PersonNote({
                   onClick={async () => {
                     if (!cropSrc) return;
                     const canvas = document.createElement("canvas");
-                    const size = cropBoxSize;
-                    canvas.width = size;
-                    canvas.height = size;
+                    canvas.width = cropBoxWidth;
+                    canvas.height = cropBoxHeight;
                     const ctx = canvas.getContext("2d");
                     if (!ctx) return;
                     const img = document.createElement("img");
@@ -2205,16 +2205,11 @@ export default function PersonNote({
                       img.onerror = () => reject();
                       img.src = cropSrc;
                     });
-                    ctx.clearRect(0, 0, size, size);
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-                    ctx.closePath();
-                    ctx.clip();
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                     const drawW = img.width * cropScale;
                     const drawH = img.height * cropScale;
-                    const cx = size / 2 + cropOffset.x;
-                    const cy = size / 2 + cropOffset.y;
+                    const cx = cropBoxWidth / 2 + cropOffset.x;
+                    const cy = cropBoxHeight / 2 + cropOffset.y;
                     ctx.drawImage(
                       img,
                       cx - drawW / 2,
@@ -2222,7 +2217,6 @@ export default function PersonNote({
                       drawW,
                       drawH
                     );
-                    ctx.restore();
                     const dataUrl = canvas.toDataURL("image/png");
                     await uploadCroppedDataUrl(dataUrl);
                     setCropOpen(false);
