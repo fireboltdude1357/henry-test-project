@@ -2029,6 +2029,37 @@ export default function PersonNote({
                 >
                   Drag & drop a profile photo here, or paste a URL below.
                 </div>
+                {currentPerson?.photo && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const url = currentPerson.photo;
+                          if (!url) return;
+                          setCropScale(1);
+                          setCropOffset({ x: 0, y: 0 });
+                          const res = await fetch(url);
+                          const blob = await res.blob();
+                          const objectUrl = URL.createObjectURL(blob);
+                          setCropSrc(objectUrl);
+                          setCropOpen(true);
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        color: "var(--foreground)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Re-crop current photo
+                    </button>
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
                     placeholder="Paste image URL (https://...)"
