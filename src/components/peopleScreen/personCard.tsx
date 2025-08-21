@@ -15,7 +15,7 @@ export const PersonCard = ({
   return (
     <button
       onClick={() => setPersonId(person._id)}
-      className="relative flex items-end bg-slate-800/30 rounded-lg p-4 border border-slate-700/30 h-[300px] w-[200px] text-left hover:border-slate-600/60 transition-colors overflow-hidden"
+      className="relative flex items-end bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30 h-[180px] sm:h-[260px] w-full sm:w-[200px] text-left hover:border-slate-600/60 transition-colors overflow-hidden"
     >
       {person.photo && (
         <img
@@ -24,7 +24,7 @@ export const PersonCard = ({
           className="absolute inset-0 w-full h-full object-cover opacity-40 rounded-none"
         />
       )}
-      <div className="relative whitespace-pre-line break-words text-slate-200">
+      <div className="relative whitespace-pre-line break-words text-slate-200 text-sm sm:text-base">
         {person.name}
       </div>
     </button>

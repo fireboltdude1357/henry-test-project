@@ -97,7 +97,7 @@ function Content() {
     <div className="min-h-screen flex">
       <Authenticated>
         {/* Sidebar */}
-        <aside className="hidden">
+        <aside className="hidden lg:block">
           <div className="px-6 py-5 border-b border-[var(--border)]/60">
             <div className="text-white font-semibold text-lg tracking-tight">
               Astraea
@@ -156,7 +156,7 @@ function Content() {
             className={`w-full ${
               screen === "calendar"
                 ? "px-0 py-0"
-                : "max-w-[1600px] mx-auto px-6 py-8"
+                : "max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8"
             }`}
           >
             <PageContent

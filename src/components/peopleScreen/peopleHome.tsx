@@ -21,16 +21,21 @@ export default function PeopleHome({
   };
   return (
     <div>
-      <form onSubmit={handleSubmit} className="flex gap-2 pb-4">
+      <form onSubmit={handleSubmit} className="flex gap-2 pb-4 px-2 sm:px-0">
         <input
           type="text"
           value={addPersonName}
           onChange={(e) => setAddPersonName(e.target.value)}
-          className="bg-slate-800/30 rounded-lg p-2 border border-slate-700/30"
+          className="flex-1 bg-slate-800/30 rounded-lg p-2 border border-slate-700/30 text-sm"
         />
-        <button type="submit">Add Person</button>
+        <button
+          type="submit"
+          className="px-3 py-2 rounded-lg border border-slate-700/30 text-sm"
+        >
+          Add
+        </button>
       </form>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
         {people?.map((person) => (
           <PersonCard
             key={person._id}

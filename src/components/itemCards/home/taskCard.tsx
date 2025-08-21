@@ -52,13 +52,13 @@ export const TaskCard = ({
       onDragLeave={() => {
         onDragLeave?.(_id);
       }}
-      className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
+      className={`backdrop-blur-sm rounded-lg p-3 sm:p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
         completed
           ? "bg-slate-800/20 border-slate-700/20 opacity-75 hover:opacity-100"
           : "bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50"
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         <input
           type="checkbox"
           checked={completed}
@@ -80,16 +80,18 @@ export const TaskCard = ({
               : "text-white group-hover:text-blue-100"
           }`}
         >
-          {text}
+          <span className="text-sm sm:text-base">{text}</span>
         </span>
-        <span className="text-slate-400 text-xs">({mainOrder})</span>
+        <span className="text-slate-400 text-[10px] sm:text-xs">
+          ({mainOrder})
+        </span>
         <button
           onClick={() => deleteItem(_id)}
-          className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          className="opacity-0 group-hover:opacity-100 p-1.5 sm:p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
           title="Delete task"
         >
           <svg
-            className="w-4 h-4"
+            className="w-3.5 h-3.5 sm:w-4 sm:h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
