@@ -90,9 +90,11 @@ type GetSignedUrlsFn = (args: {
 export default function PersonNote({
   personId,
   onDeleted,
+  onBack,
 }: {
   personId: Id<"people">;
   onDeleted?: () => void;
+  onBack?: () => void;
 }) {
   const personData = useQuery(api.peopleData.get, {
     personId: personId,
@@ -2360,6 +2362,23 @@ export default function PersonNote({
   return (
     <div>
       <div>
+        {onBack && (
+          <div style={{ marginBottom: 8 }}>
+            <button
+              onClick={onBack}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 8,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+                cursor: "pointer",
+              }}
+            >
+              ← All people
+            </button>
+          </div>
+        )}
         {/* Tab bar */}
         <div
           style={{
