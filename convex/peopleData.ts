@@ -946,6 +946,9 @@ export const updateBasicInfo = mutation({
           value: v.optional(v.string()),
           list: v.optional(v.array(v.string())),
           ordered: v.optional(v.boolean()),
+          todos: v.optional(
+            v.array(v.object({ text: v.string(), completed: v.boolean() }))
+          ),
         })
       )
     ),

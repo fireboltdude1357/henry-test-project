@@ -860,6 +860,7 @@ export default function PersonNote({
       value?: string;
       list?: string[];
       ordered?: boolean;
+      todos?: { text: string; completed: boolean }[];
     }[] =
       (personData &&
       Array.isArray((personData as Record<string, unknown>).customInfo)
@@ -870,6 +871,7 @@ export default function PersonNote({
                 value?: string;
                 list?: string[];
                 ordered?: boolean;
+                todos?: { text: string; completed: boolean }[];
               }[];
             }
           ).customInfo as {
@@ -877,30 +879,49 @@ export default function PersonNote({
             value?: string;
             list?: string[];
             ordered?: boolean;
+            todos?: { text: string; completed: boolean }[];
           }[])
         : []) || [];
     const [customLabel, setCustomLabel] = useState("");
     const [customValue, setCustomValue] = useState("");
     const [customOpen, setCustomOpen] = useState(false);
-    const [customMode, setCustomMode] = useState<"value" | "list">("value");
+    const [customMode, setCustomMode] = useState<"value" | "list" | "todo">(
+      "value"
+    );
     const [customListItems, setCustomListItems] = useState<string[]>([]);
     const [customListInput, setCustomListInput] = useState("");
     const [customOrdered, setCustomOrdered] = useState(false);
+    const [customTodos, setCustomTodos] = useState<
+      { text: string; completed: boolean }[]
+    >([]);
+    const [customTodoInput, setCustomTodoInput] = useState("");
 
     // Edit state for existing custom items
     const [editingIdx, setEditingIdx] = useState<number | null>(null);
     const [editLabel, setEditLabel] = useState("");
-    const [editMode, setEditMode] = useState<"value" | "list">("value");
+    const [editMode, setEditMode] = useState<"value" | "list" | "todo">(
+      "value"
+    );
     const [editValue, setEditValue] = useState("");
     const [editListItems, setEditListItems] = useState<string[]>([]);
     const [editOrdered, setEditOrdered] = useState(false);
     const [editListInput, setEditListInput] = useState("");
+    const [editTodos, setEditTodos] = useState<
+      { text: string; completed: boolean }[]
+    >([]);
+    const [editTodoInput, setEditTodoInput] = useState("");
 
     const beginEdit = (idx: number) => {
       const item = existingCustom[idx];
       setEditingIdx(idx);
       setEditLabel(item.label);
-      if (Array.isArray(item.list) && item.list.length > 0) {
+      if (Array.isArray(item.todos) && item.todos.length > 0) {
+        setEditMode("todo");
+        setEditTodos(item.todos);
+        setEditListItems([]);
+        setEditOrdered(false);
+        setEditValue("");
+      } else if (Array.isArray(item.list) && item.list.length > 0) {
         setEditMode("list");
         setEditListItems(item.list);
         setEditOrdered(!!item.ordered);
@@ -912,21 +933,28 @@ export default function PersonNote({
         setEditOrdered(false);
       }
       setEditListInput("");
+      setEditTodoInput("");
     };
 
     const saveEdit = async () => {
       if (editingIdx === null) return;
-      const updated = existingCustom.map((ci, i) =>
-        i === editingIdx
-          ? editMode === "value"
-            ? { label: editLabel.trim() || ci.label, value: editValue }
-            : {
-                label: editLabel.trim() || ci.label,
-                list: editListItems,
-                ordered: editOrdered,
-              }
-          : ci
-      );
+      const updated = existingCustom.map((ci, i) => {
+        if (i !== editingIdx) return ci;
+        if (editMode === "value") {
+          return { label: editLabel.trim() || ci.label, value: editValue };
+        } else if (editMode === "list") {
+          return {
+            label: editLabel.trim() || ci.label,
+            list: editListItems,
+            ordered: editOrdered,
+          };
+        } else {
+          return {
+            label: editLabel.trim() || ci.label,
+            todos: editTodos,
+          };
+        }
+      });
       await updateBasicInfo({ personId, customInfo: updated });
       setEditingIdx(null);
       setEditLabel("");
@@ -934,6 +962,8 @@ export default function PersonNote({
       setEditListItems([]);
       setEditOrdered(false);
       setEditListInput("");
+      setEditTodos([]);
+      setEditTodoInput("");
     };
 
     const deleteCustom = async (idx: number) => {
@@ -1439,7 +1469,9 @@ export default function PersonNote({
                           <select
                             value={editMode}
                             onChange={(e) =>
-                              setEditMode(e.target.value as "value" | "list")
+                              setEditMode(
+                                e.target.value as "value" | "list" | "todo"
+                              )
                             }
                             style={{
                               border: "1px solid var(--border)",
@@ -1454,6 +1486,9 @@ export default function PersonNote({
                             </option>
                             <option value="list" style={{ color: "#000" }}>
                               List
+                            </option>
+                            <option value="todo" style={{ color: "#000" }}>
+                              Todo list
                             </option>
                           </select>
                         </div>
@@ -1470,7 +1505,7 @@ export default function PersonNote({
                               color: "var(--foreground)",
                             }}
                           />
-                        ) : (
+                        ) : editMode === "list" ? (
                           <div style={{ display: "grid", gap: 8 }}>
                             <div
                               style={{
@@ -1485,6 +1520,15 @@ export default function PersonNote({
                                   setEditListInput(e.target.value)
                                 }
                                 placeholder="List item"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const v = editListInput.trim();
+                                    if (!v) return;
+                                    setEditListItems((arr) => [...arr, v]);
+                                    setEditListInput("");
+                                  }
+                                }}
                                 style={{
                                   flex: 1,
                                   border: "1px solid var(--border)",
@@ -1569,8 +1613,176 @@ export default function PersonNote({
                               </ul>
                             )}
                           </div>
+                        ) : (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                              }}
+                            >
+                              <input
+                                value={editTodoInput}
+                                onChange={(e) =>
+                                  setEditTodoInput(e.target.value)
+                                }
+                                placeholder="Todo item"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const v = editTodoInput.trim();
+                                    if (!v) return;
+                                    setEditTodos((arr) => [
+                                      ...arr,
+                                      { text: v, completed: false },
+                                    ]);
+                                    setEditTodoInput("");
+                                  }
+                                }}
+                                style={{
+                                  flex: 1,
+                                  border: "1px solid var(--border)",
+                                  borderRadius: 10,
+                                  padding: "8px 10px",
+                                  background: "transparent",
+                                  color: "var(--foreground)",
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const v = editTodoInput.trim();
+                                  if (!v) return;
+                                  setEditTodos((arr) => [
+                                    ...arr,
+                                    { text: v, completed: false },
+                                  ]);
+                                  setEditTodoInput("");
+                                }}
+                                style={{
+                                  padding: "8px 12px",
+                                  borderRadius: 10,
+                                  border: "1px solid var(--border)",
+                                  background: "transparent",
+                                  color: "var(--foreground)",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Add todo
+                              </button>
+                            </div>
+                            {editTodos.length > 0 && (
+                              <ul
+                                style={{
+                                  listStyle: "none",
+                                  paddingLeft: 0,
+                                  margin: 0,
+                                }}
+                              >
+                                {editTodos.map((it, i) => (
+                                  <li
+                                    key={i}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={it.completed}
+                                      onChange={(e) =>
+                                        setEditTodos((arr) =>
+                                          arr.map((t, j) =>
+                                            j === i
+                                              ? {
+                                                  ...t,
+                                                  completed: e.target.checked,
+                                                }
+                                              : t
+                                          )
+                                        )
+                                      }
+                                    />
+                                    <span style={{ flex: 1 }}>{it.text}</span>
+                                    <button
+                                      onClick={() =>
+                                        setEditTodos((arr) =>
+                                          arr.filter((_, j) => j !== i)
+                                        )
+                                      }
+                                      style={{
+                                        padding: "4px 8px",
+                                        borderRadius: 8,
+                                        border: "1px solid var(--border)",
+                                        background: "transparent",
+                                        color: "var(--foreground)",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Remove
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
                         )}
                       </div>
+                    ) : Array.isArray(ci.todos) && ci.todos.length > 0 ? (
+                      <ul
+                        style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}
+                      >
+                        {ci.todos.map((todo, i) => (
+                          <li
+                            key={i}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!todo.completed}
+                              onChange={async (e) => {
+                                const updated = existingCustom.map((c, j) =>
+                                  j === idx
+                                    ? {
+                                        ...c,
+                                        todos: (c.todos || []).map((t, k) =>
+                                          k === i
+                                            ? {
+                                                ...t,
+                                                completed: e.target.checked,
+                                              }
+                                            : t
+                                        ),
+                                      }
+                                    : c
+                                );
+                                await updateBasicInfo({
+                                  personId,
+                                  customInfo: updated,
+                                });
+                              }}
+                            />
+                            <span
+                              style={{
+                                flex: 1,
+                                textDecoration: todo.completed
+                                  ? "line-through"
+                                  : "none",
+                                color: todo.completed
+                                  ? "var(--muted)"
+                                  : "var(--foreground)",
+                              }}
+                            >
+                              {todo.text}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     ) : Array.isArray(ci.list) && ci.list.length > 0 ? (
                       ci.ordered ? (
                         <ol
@@ -1687,7 +1899,7 @@ export default function PersonNote({
                 <select
                   value={customMode}
                   onChange={(e) =>
-                    setCustomMode(e.target.value as "value" | "list")
+                    setCustomMode(e.target.value as "value" | "list" | "todo")
                   }
                   style={{
                     border: "1px solid var(--border)",
@@ -1702,6 +1914,9 @@ export default function PersonNote({
                   </option>
                   <option value="list" style={{ color: "#000" }}>
                     List
+                  </option>
+                  <option value="todo" style={{ color: "#000" }}>
+                    Todo list
                   </option>
                 </select>
               </div>
@@ -1721,7 +1936,7 @@ export default function PersonNote({
                     }}
                   />
                 </div>
-              ) : (
+              ) : customMode === "list" ? (
                 <div style={{ display: "grid", gap: 8 }}>
                   <div
                     style={{ display: "flex", gap: 8, alignItems: "center" }}
@@ -1730,6 +1945,15 @@ export default function PersonNote({
                       value={customListInput}
                       onChange={(e) => setCustomListInput(e.target.value)}
                       placeholder="List item"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const v = customListInput.trim();
+                          if (!v) return;
+                          setCustomListItems((arr) => [...arr, v]);
+                          setCustomListInput("");
+                        }
+                      }}
                       style={{
                         flex: 1,
                         border: "1px solid var(--border)",
@@ -1778,6 +2002,107 @@ export default function PersonNote({
                     </ul>
                   )}
                 </div>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <input
+                      value={customTodoInput}
+                      onChange={(e) => setCustomTodoInput(e.target.value)}
+                      placeholder="Todo item"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const v = customTodoInput.trim();
+                          if (!v) return;
+                          setCustomTodos((arr) => [
+                            ...arr,
+                            { text: v, completed: false },
+                          ]);
+                          setCustomTodoInput("");
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        background: "transparent",
+                        color: "var(--foreground)",
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        const v = customTodoInput.trim();
+                        if (!v) return;
+                        setCustomTodos((arr) => [
+                          ...arr,
+                          { text: v, completed: false },
+                        ]);
+                        setCustomTodoInput("");
+                      }}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        color: "var(--foreground)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Add todo
+                    </button>
+                  </div>
+                  {customTodos.length > 0 && (
+                    <ul
+                      style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}
+                    >
+                      {customTodos.map((it, i) => (
+                        <li
+                          key={i}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={it.completed}
+                            onChange={(e) =>
+                              setCustomTodos((arr) =>
+                                arr.map((t, j) =>
+                                  j === i
+                                    ? { ...t, completed: e.target.checked }
+                                    : t
+                                )
+                              )
+                            }
+                          />
+                          <span style={{ flex: 1 }}>{it.text}</span>
+                          <button
+                            onClick={() =>
+                              setCustomTodos((arr) =>
+                                arr.filter((_, j) => j !== i)
+                              )
+                            }
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 8,
+                              border: "1px solid var(--border)",
+                              background: "transparent",
+                              color: "var(--foreground)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -1786,17 +2111,24 @@ export default function PersonNote({
                     const toAdd =
                       customMode === "value"
                         ? { label: customLabel.trim(), value: customValue }
-                        : {
-                            label: customLabel.trim(),
-                            list: customListItems,
-                            ordered: customOrdered,
-                          };
+                        : customMode === "list"
+                          ? {
+                              label: customLabel.trim(),
+                              list: customListItems,
+                              ordered: customOrdered,
+                            }
+                          : {
+                              label: customLabel.trim(),
+                              todos: customTodos,
+                            };
                     const updated = [...existingCustom, toAdd];
                     await updateBasicInfo({ personId, customInfo: updated });
                     setCustomLabel("");
                     setCustomValue("");
                     setCustomListItems([]);
                     setCustomOrdered(false);
+                    setCustomTodos([]);
+                    setCustomTodoInput("");
                     setCustomOpen(false);
                   }}
                   style={{
