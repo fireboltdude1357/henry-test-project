@@ -14,6 +14,8 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as calendarDays from "../calendarDays.js";
+import type * as people from "../people.js";
+import type * as peopleData from "../peopleData.js";
 import type * as projects from "../projects.js";
 import type * as toDoItems from "../toDoItems.js";
 import type * as users from "../users.js";
@@ -28,6 +30,8 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   calendarDays: typeof calendarDays;
+  people: typeof people;
+  peopleData: typeof peopleData;
   projects: typeof projects;
   toDoItems: typeof toDoItems;
   users: typeof users;

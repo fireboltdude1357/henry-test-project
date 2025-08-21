@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Astraea",
   description: "Astraea",
+  icons: {
+    icon: "/astraea-logo.svg",
+    shortcut: "/astraea-logo.svg",
+    apple: "/astraea-logo.svg",
+  },
 };
 
 export default function RootLayout({
