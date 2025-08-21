@@ -41,20 +41,20 @@ export default function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-20 bg-[var(--surface-2)]/70 backdrop-blur-xl border-b border-[var(--border)]">
-      <div className="w-full px-6 py-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="w-full px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-col gap-3 sm:gap-4 xl:flex-row xl:items-center xl:justify-between">
           {/* Title */}
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500/60 to-purple-500/60 border border-[var(--border)]"></div>
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-gradient-to-br from-blue-500/60 to-purple-500/60 border border-[var(--border)]"></div>
             <div>
-              <h1 className="text-xl font-semibold text-white">
+              <h1 className="text-lg sm:text-xl font-semibold text-white">
                 {screen === "home"
                   ? "Your Tasks"
                   : screen === "calendar"
                     ? "Calendar"
                     : "People"}
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400">
                 {screen === "home"
                   ? "Capture tasks and projects"
                   : screen === "calendar"
@@ -64,12 +64,35 @@ export default function AppHeader({
             </div>
           </div>
 
+          {/* Mobile Nav */}
+          <div className="flex items-center gap-2 sm:hidden">
+            {(
+              [
+                { key: "home", label: "Home" },
+                { key: "calendar", label: "Cal" },
+                { key: "people", label: "People" },
+              ] as { key: Screen; label: string }[]
+            ).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setScreen(t.key)}
+                className={`px-3 py-1.5 rounded-lg border text-sm ${
+                  screen === t.key
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-200"
+                    : "border-[var(--border)] text-slate-300 hover:text-white hover:bg-slate-800/40"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
           {/* Quick add */}
           <div className="flex-1 max-w-3xl mx-auto xl:mx-0">
-            <div className="bg-[var(--surface-1)]/60 rounded-xl p-3 border border-[var(--border)]">
-              <div className="flex items-center gap-3">
-                {/* Type Selection */}
-                <div className="flex gap-2">
+            <div className="bg-[var(--surface-1)]/60 rounded-xl p-2 sm:p-3 border border-[var(--border)]">
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Type Selection (mobile select, desktop buttons) */}
+                <div className="hidden sm:flex gap-2">
                   {[
                     { type: "task", icon: "📝", label: "Task", color: "blue" },
                     {
@@ -102,6 +125,19 @@ export default function AppHeader({
                       {label}
                     </button>
                   ))}
+                </div>
+                <div className="sm:hidden">
+                  <select
+                    value={itemTypeToAdd}
+                    onChange={(e) =>
+                      setItemTypeToAdd(e.target.value as ItemType)
+                    }
+                    className="bg-slate-900/40 border border-[var(--border)] rounded-lg px-2 py-1 text-white text-sm"
+                  >
+                    <option value="task">Task</option>
+                    <option value="project">Project</option>
+                    <option value="folder">Folder</option>
+                  </select>
                 </div>
 
                 {/* Parent Selection Display */}
@@ -172,7 +208,7 @@ export default function AppHeader({
                   <button
                     onClick={handleAdd}
                     disabled={!text.trim()}
-                    className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700/80 disabled:cursor-not-allowed text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-1 text-sm shadow-lg shadow-blue-600/20"
+                    className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700/80 disabled:cursor-not-allowed text-white font-semibold px-3 sm:px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-1 text-sm shadow-lg shadow-blue-600/20"
                   >
                     <svg
                       className="w-3 h-3"
@@ -195,7 +231,7 @@ export default function AppHeader({
           </div>
 
           {/* Right controls */}
-          <div className="flex items-center gap-3 justify-end">
+          <div className="hidden sm:flex items-center gap-3 justify-end">
             <button
               onClick={() => setScreen("calendar")}
               className={`hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${

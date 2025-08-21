@@ -1393,7 +1393,7 @@ export default function PersonNote({
           background: "var(--surface-1)",
           border: "1px solid var(--border)",
           borderRadius: 12,
-          padding: 16,
+          padding: 10,
           display: "grid",
           gap: 12,
         }}
@@ -1585,8 +1585,8 @@ export default function PersonNote({
                 padding: 0,
                 margin: 0,
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                gap: 12,
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 10,
               }}
             >
               {customListTodoItems.map(({ ci, idx }) => (
@@ -1596,7 +1596,7 @@ export default function PersonNote({
                     background: "var(--surface-2)",
                     border: "1px solid var(--border)",
                     borderRadius: 12,
-                    padding: 12,
+                    padding: 10,
                     display: "grid",
                     gap: 10,
                   }}
@@ -2383,11 +2383,11 @@ export default function PersonNote({
         <div
           style={{
             display: "flex",
-            gap: 8,
-            marginBottom: 12,
+            gap: 6,
+            marginBottom: 8,
             borderBottom: "1px solid var(--border)",
             overflowX: "auto",
-            paddingBottom: 8,
+            paddingBottom: 6,
           }}
         >
           {allTabs.map((t) => {
@@ -2398,7 +2398,7 @@ export default function PersonNote({
                 onClick={() => setActiveTab(t.key)}
                 data-selected={isActive ? "true" : "false"}
                 style={{
-                  padding: "8px 12px",
+                  padding: "6px 10px",
                   borderRadius: 10,
                   border: "1px solid var(--border)",
                   background: isActive ? "var(--surface-2)" : "transparent",
