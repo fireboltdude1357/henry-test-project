@@ -57,10 +57,12 @@ const applicationTables = {
   people: defineTable({
     name: v.string(),
     userId: v.id("users"),
+    photo: v.optional(v.string()),
   }).index("by_user", ["userId"]),
   peopleData: defineTable({
     personId: v.id("people"),
     birthday: v.optional(v.string()),
+    anniversary: v.optional(v.string()),
     movies: v.optional(
       v.array(
         v.object({
@@ -142,6 +144,16 @@ const applicationTables = {
           links: v.array(v.string()),
           notes: v.string(),
           photos: v.array(v.string()), // photo URLs for now; can migrate to Convex storage IDs later
+        })
+      )
+    ),
+    customInfo: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          value: v.optional(v.string()),
+          list: v.optional(v.array(v.string())),
+          ordered: v.optional(v.boolean()),
         })
       )
     ),

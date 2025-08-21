@@ -8,7 +8,9 @@ export default function PeopleScreen() {
   return (
     <div>
       {personId === null && <PeopleHome setPersonId={setPersonId} />}
-      {personId !== null && <PersonNote personId={personId} />}
+      {personId !== null && (
+        <PersonNote personId={personId} onDeleted={() => setPersonId(null)} />
+      )}
     </div>
   );
 }

@@ -100,3 +100,30 @@ export const deletePerson = mutation({
     return args.id;
   },
 });
+
+export const updatePhoto = mutation({
+  args: {
+    id: v.id("people"),
+    photo: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+    const person = await ctx.db.get(args.id);
+    if (person === null) throw new Error("Person not found");
+    if (person.userId !== userId._id) {
+      throw new Error("Person does not belong to user");
+    }
+    await ctx.db.patch(args.id, { photo: args.photo });
+    return args.id;
+  },
+});

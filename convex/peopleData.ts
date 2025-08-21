@@ -810,6 +810,17 @@ export const updateBasicInfo = mutation({
     personId: v.id("people"),
     name: v.optional(v.string()),
     birthday: v.optional(v.string()),
+    anniversary: v.optional(v.string()),
+    customInfo: v.optional(
+      v.array(
+        v.object({
+          label: v.string(),
+          value: v.optional(v.string()),
+          list: v.optional(v.array(v.string())),
+          ordered: v.optional(v.boolean()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -831,8 +842,20 @@ export const updateBasicInfo = mutation({
     const patch: Record<string, unknown> = {};
     if (typeof args.name === "string") patch.name = args.name;
     if (typeof args.birthday === "string") patch.birthday = args.birthday;
+    if (typeof args.anniversary === "string")
+      patch.anniversary = args.anniversary;
+    if (Array.isArray(args.customInfo)) patch.customInfo = args.customInfo;
 
     if (Object.keys(patch).length === 0) return peopleDataDoc._id;
+
+    // If name is being updated, also update the `people` document
+    if (typeof args.name === "string") {
+      const person = await ctx.db.get(args.personId);
+      if (person === null) throw new Error("Person not found");
+      if (person.userId !== user._id)
+        throw new Error("Person does not belong to user");
+      await ctx.db.patch(args.personId, { name: args.name });
+    }
 
     await ctx.db.patch(peopleDataDoc._id, patch);
     return peopleDataDoc._id;
