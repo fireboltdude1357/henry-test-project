@@ -97,7 +97,7 @@ function Content() {
     <div className="min-h-screen flex">
       <Authenticated>
         {/* Sidebar */}
-        <aside className="hidden lg:block">
+        {/* <aside className="hidden lg:block">
           <div className="px-6 py-5 border-b border-[var(--border)]/60">
             <div className="text-white font-semibold text-lg tracking-tight">
               Astraea
@@ -132,7 +132,7 @@ function Content() {
               <span>Account</span>
             </div>
           </div>
-        </aside>
+        </aside> */}
 
         {/* Main column */}
         <div className="flex-1 flex flex-col min-w-0">
