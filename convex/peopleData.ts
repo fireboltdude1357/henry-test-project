@@ -694,6 +694,133 @@ export const addDateIdea = mutation({
   },
 });
 
+// Gift ideas mutations (mirror date ideas)
+export const addGiftIdea = mutation({
+  args: {
+    personId: v.id("people"),
+    title: v.string(),
+    links: v.array(v.string()),
+    notes: v.string(),
+    photos: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+
+    const updated = [
+      ...(peopleDataDoc.giftIdeas as unknown as {
+        title: string;
+        links: string[];
+        notes: string;
+        photos: string[];
+      }[]),
+      {
+        title: args.title,
+        links: args.links,
+        notes: args.notes,
+        photos: args.photos,
+      },
+    ];
+    await ctx.db.patch(peopleDataDoc._id, { giftIdeas: updated });
+    return peopleDataDoc._id;
+  },
+});
+
+export const updateGiftIdea = mutation({
+  args: {
+    personId: v.id("people"),
+    index: v.number(),
+    title: v.optional(v.string()),
+    links: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+    photos: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+
+    const ideas = peopleDataDoc.giftIdeas as unknown as {
+      title: string;
+      links: string[];
+      notes: string;
+      photos: string[];
+    }[];
+    if (args.index < 0 || args.index >= ideas.length)
+      throw new Error("Index out of bounds");
+
+    const updated = ideas.map((idea, i) =>
+      i === args.index
+        ? {
+            title: args.title ?? idea.title,
+            links: args.links ?? idea.links,
+            notes: args.notes ?? idea.notes,
+            photos: args.photos ?? idea.photos,
+          }
+        : idea
+    );
+
+    await ctx.db.patch(peopleDataDoc._id, { giftIdeas: updated });
+    return peopleDataDoc._id;
+  },
+});
+
+export const removeGiftIdea = mutation({
+  args: { personId: v.id("people"), index: v.number() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) throw new Error("Not authenticated");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) throw new Error("User not found");
+    const peopleDataDoc = await ctx.db
+      .query("peopleData")
+      .withIndex("by_person", (q) => q.eq("personId", args.personId))
+      .unique();
+    if (peopleDataDoc === null) throw new Error("People data not found");
+    if (peopleDataDoc.userId !== user._id)
+      throw new Error("People data does not belong to user");
+    const ideas = peopleDataDoc.giftIdeas as unknown as {
+      title: string;
+      links: string[];
+      notes: string;
+      photos: string[];
+    }[];
+    if (args.index < 0 || args.index >= ideas.length)
+      throw new Error("Index out of bounds");
+
+    const updated = ideas.filter((_, i) => i !== args.index);
+    await ctx.db.patch(peopleDataDoc._id, { giftIdeas: updated });
+    return peopleDataDoc._id;
+  },
+});
 // Trip ideas mutations (mirror date ideas)
 export const addTripIdea = mutation({
   args: {

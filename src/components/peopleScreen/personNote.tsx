@@ -108,8 +108,11 @@ export default function PersonNote({
   const searchBooks = useAction(api.peopleData.searchBooks);
   const addBookByKey = useAction(api.peopleData.addBookByKey);
   const addDateIdea = useMutation(api.peopleData.addDateIdea);
+  const addGiftIdea = useMutation(api.peopleData.addGiftIdea);
   const removeDateIdea = useMutation(api.peopleData.removeDateIdea);
   const updateDateIdea = useMutation(api.peopleData.updateDateIdea);
+  const removeGiftIdea = useMutation(api.peopleData.removeGiftIdea);
+  const updateGiftIdea = useMutation(api.peopleData.updateGiftIdea);
   const addTripIdea = useMutation(api.peopleData.addTripIdea);
   const removeTripIdea = useMutation(api.peopleData.removeTripIdea);
   const updateTripIdea = useMutation(api.peopleData.updateTripIdea);
@@ -124,11 +127,11 @@ export default function PersonNote({
   type Category = "movies" | "books" | "tvShows" | "music" | "games" | "other";
   const categories: { key: Category; label: string }[] = [
     { key: "movies", label: "Movies" },
-    { key: "books", label: "Books" },
     { key: "tvShows", label: "TV Shows" },
-    { key: "music", label: "Music" },
+    { key: "books", label: "Books" },
     { key: "games", label: "Games" },
     { key: "other", label: "Other" },
+    { key: "music", label: "Music" },
   ];
 
   const handleToggle = async (
@@ -150,18 +153,37 @@ export default function PersonNote({
   };
 
   // Tabs
-  type TabKey = "basic" | Category | "dateIdeas" | "tripIdeas" | "settings";
+  type TabKey =
+    | "basic"
+    | Category
+    | "dateIdeas"
+    | "giftIdeas"
+    | "tripIdeas"
+    | "settings";
   const [activeTab, setActiveTab] = useState<TabKey>("basic");
   const allTabs: { key: TabKey; label: string }[] = [
     { key: "basic", label: "Basic Info" },
-    ...categories,
+    { key: "movies", label: "Movies" },
+    { key: "tvShows", label: "TV Shows" },
+    { key: "books", label: "Books" },
+    { key: "giftIdeas", label: "Gift Ideas" },
     { key: "dateIdeas", label: "Date Ideas" },
+    { key: "games", label: "Games" },
     { key: "tripIdeas", label: "Trip Ideas" },
+    { key: "other", label: "Other" },
     { key: "settings", label: "Settings" },
   ];
 
   // Persist Date Ideas draft while navigating tabs
   const [dateIdeaDraft, setDateIdeaDraft] = useState<DateIdeaDraft>({
+    title: "",
+    links: [],
+    notes: "",
+    photos: [],
+    linkInput: "",
+    photoInput: "",
+  });
+  const [giftIdeaDraft, setGiftIdeaDraft] = useState<DateIdeaDraft>({
     title: "",
     links: [],
     notes: "",
@@ -2391,6 +2413,18 @@ export default function PersonNote({
             getUploadUrl={getUploadUrl}
             getSignedUrls={getSignedUrls}
           />
+        ) : activeTab === "giftIdeas" ? (
+          <GiftIdeasView
+            personId={personId}
+            personData={personData as PersonDataForDateIdeas}
+            draft={giftIdeaDraft}
+            setDraft={setGiftIdeaDraft}
+            addIdea={addGiftIdea}
+            removeIdea={removeGiftIdea}
+            updateIdea={updateGiftIdea}
+            getUploadUrl={getUploadUrl}
+            getSignedUrls={getSignedUrls}
+          />
         ) : activeTab === "tripIdeas" ? (
           <TripIdeasView
             personId={personId}
@@ -3364,6 +3398,705 @@ function DateIdeasView({
                       </button>
                       <button
                         onClick={() => removeDateIdea({ personId, index: idx })}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "#ef4444",
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    {idea.links?.length > 0 && (
+                      <ul
+                        style={{
+                          listStyle: "disc",
+                          paddingLeft: 20,
+                          marginTop: 6,
+                        }}
+                      >
+                        {idea.links.map((l, i) => (
+                          <li key={i} style={{ color: "var(--muted)" }}>
+                            <a
+                              href={toExternalHref(l)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: "var(--muted)",
+                                textDecoration: "underline",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {l}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {idea.notes && (
+                      <div style={{ color: "var(--muted)", marginTop: 6 }}>
+                        {linkifyText(idea.notes)}
+                      </div>
+                    )}
+                    {idea.photos?.length > 0 && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fill, minmax(100px, 1fr))",
+                          gap: 8,
+                          marginTop: 8,
+                        }}
+                      >
+                        {idea.photos.map((p, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 8,
+                              overflow: "hidden",
+                            }}
+                          >
+                            {safeImageSrc(p) ? (
+                              <img
+                                src={safeImageSrc(p) as string}
+                                alt={`photo-${i}`}
+                                style={{
+                                  width: "100%",
+                                  height: 180,
+                                  objectFit: "cover",
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{ padding: 12, color: "var(--muted)" }}
+                              >
+                                Invalid URL
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GiftIdeasView({
+  personId,
+  personData,
+  draft,
+  setDraft,
+  addIdea,
+  removeIdea,
+  updateIdea,
+  getUploadUrl,
+  getSignedUrls,
+}: {
+  personId: Id<"people">;
+  personData: PersonDataForDateIdeas;
+  draft: DateIdeaDraft;
+  setDraft: React.Dispatch<React.SetStateAction<DateIdeaDraft>>;
+  addIdea: AddDateIdeaFn;
+  removeIdea: RemoveDateIdeaFn;
+  updateIdea: (args: {
+    personId: Id<"people">;
+    index: number;
+    title?: string;
+    links?: string[];
+    notes?: string;
+    photos?: string[];
+  }) => Promise<unknown>;
+  getUploadUrl: GetUploadUrlFn;
+  getSignedUrls: GetSignedUrlsFn;
+}) {
+  const ideas = ((personData as unknown as { giftIdeas?: DateIdea[] })
+    .giftIdeas || []) as DateIdea[];
+
+  // Reuse DateIdeasView behavior by copying handlers and swapping labels
+  const [isDragging, setIsDragging] = useState(false);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editLinks, setEditLinks] = useState<string[]>([]);
+  const [editLinkInput, setEditLinkInput] = useState("");
+  const [editPhotos, setEditPhotos] = useState<string[]>([]);
+
+  const addLink = () => {
+    const l = draft.linkInput.trim();
+    if (!l) return;
+    setDraft((d) => ({ ...d, links: [...d.links, l], linkInput: "" }));
+  };
+  const addPhoto = () => {
+    const p = draft.photoInput.trim();
+    if (!p) return;
+    setDraft((d) => ({ ...d, photos: [...d.photos, p], photoInput: "" }));
+  };
+
+  async function uploadFiles(files: FileList | File[]) {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const { uploadUrl } = await getUploadUrl({});
+    const uploadedIds: Id<"_storage">[] = [];
+    for (const file of list) {
+      const contentType =
+        file.type ||
+        (file.name.endsWith(".png")
+          ? "image/png"
+          : file.name.match(/\.jpe?g$/i)
+            ? "image/jpeg"
+            : "application/octet-stream");
+      const resp = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": contentType },
+        body: file,
+      });
+      if (!resp.ok) continue;
+      const json = (await resp.json()) as { storageId: Id<"_storage"> };
+      uploadedIds.push(json.storageId);
+    }
+    if (uploadedIds.length > 0) {
+      const signed = await getSignedUrls({ ids: uploadedIds });
+      const urls = signed
+        .map((s) => s.url)
+        .filter((u): u is string => typeof u === "string");
+      if (urls.length > 0) {
+        if (editingIdx !== null) setEditPhotos((prev) => [...prev, ...urls]);
+        else setDraft((d) => ({ ...d, photos: [...d.photos, ...urls] }));
+      }
+    }
+  }
+
+  const onDrop: React.DragEventHandler<HTMLDivElement> = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await uploadFiles(e.dataTransfer.files);
+      e.dataTransfer.clearData();
+    }
+  };
+
+  const onPaste: React.ClipboardEventHandler<
+    HTMLTextAreaElement | HTMLDivElement
+  > = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (it.kind === "file") {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length > 0) await uploadFiles(files);
+  };
+
+  const saveIdea = async () => {
+    if (!draft.title.trim()) return;
+    await addIdea({
+      personId,
+      title: draft.title.trim(),
+      links: draft.links,
+      notes: draft.notes,
+      photos: draft.photos,
+    });
+    setDraft({
+      title: "",
+      links: [],
+      notes: "",
+      photos: [],
+      linkInput: "",
+      photoInput: "",
+    });
+  };
+
+  const beginEditIdea = (idx: number) => {
+    const idea = ideas[idx];
+    setEditingIdx(idx);
+    setEditTitle(idea.title);
+    setEditNotes(idea.notes);
+    setEditLinks(idea.links);
+    setEditLinkInput("");
+    setEditPhotos(idea.photos);
+  };
+
+  const saveEditIdea = async () => {
+    if (editingIdx === null) return;
+    await updateIdea({
+      personId,
+      index: editingIdx,
+      title: editTitle,
+      links: editLinks,
+      notes: editNotes,
+      photos: editPhotos,
+    });
+    setEditingIdx(null);
+    setEditTitle("");
+    setEditNotes("");
+    setEditLinks([]);
+    setEditPhotos([]);
+    setEditLinkInput("");
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div
+        style={{
+          background: "var(--surface-1)",
+          border: "1px solid var(--border)",
+          borderRadius: 12,
+          padding: 12,
+        }}
+      >
+        <div style={{ display: "grid", gap: 8 }}>
+          <input
+            value={draft.title}
+            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+            placeholder="Gift idea title"
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              background: "transparent",
+              color: "var(--foreground)",
+            }}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={draft.linkInput}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, linkInput: e.target.value }))
+              }
+              placeholder="Add helpful link (https://...)"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addLink();
+              }}
+              style={{
+                flex: 1,
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            />
+            <button
+              onClick={addLink}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            >
+              Add link
+            </button>
+          </div>
+          {draft.links.length > 0 && (
+            <ul style={{ listStyle: "disc", paddingLeft: 20, margin: 0 }}>
+              {draft.links.map((l, i) => (
+                <li key={i} style={{ color: "var(--muted)" }}>
+                  <a
+                    href={toExternalHref(l)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "var(--muted)",
+                      textDecoration: "underline",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {l}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          <textarea
+            value={draft.notes}
+            onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+            placeholder="Notes"
+            rows={4}
+            onPaste={onPaste}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "10px 12px",
+              background: "transparent",
+              color: "var(--foreground)",
+              resize: "vertical",
+            }}
+          />
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={onDrop}
+            onPaste={onPaste}
+            style={{
+              border: `1px dashed ${isDragging ? "var(--accent)" : "var(--border)"}`,
+              borderRadius: 10,
+              padding: 12,
+              background: "var(--surface-2)",
+              color: "var(--muted)",
+            }}
+          >
+            Drag & drop photos here, paste images, or add a photo URL below.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={draft.photoInput}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, photoInput: e.target.value }))
+              }
+              placeholder="Add photo URL (https://...)"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addPhoto();
+              }}
+              style={{
+                flex: 1,
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            />
+            <button
+              onClick={addPhoto}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            >
+              Add photo
+            </button>
+          </div>
+          {draft.photos.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                gap: 8,
+              }}
+            >
+              {draft.photos.map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    background: "var(--surface-2)",
+                  }}
+                >
+                  {safeImageSrc(p) ? (
+                    <img
+                      src={safeImageSrc(p) as string}
+                      alt={`photo-${i}`}
+                      style={{ width: "100%", height: 180, objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div style={{ padding: 12, color: "var(--muted)" }}>
+                      Invalid URL
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={saveIdea}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border)",
+                background: "transparent",
+                color: "var(--foreground)",
+              }}
+            >
+              Save idea
+            </button>
+          </div>
+        </div>
+      </div>
+      {ideas && ideas.length > 0 && (
+        <div
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            padding: 12,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Saved ideas</div>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gap: 12,
+            }}
+          >
+            {ideas.map((idea, idx) => (
+              <li
+                key={idx}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: 10,
+                }}
+              >
+                {editingIdx === idx ? (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Title"
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        background: "transparent",
+                        color: "var(--foreground)",
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        value={editLinkInput}
+                        onChange={(e) => setEditLinkInput(e.target.value)}
+                        placeholder="Add link (https://...)"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const l = editLinkInput.trim();
+                            if (!l) return;
+                            setEditLinks((arr) => [...arr, l]);
+                            setEditLinkInput("");
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          border: "1px solid var(--border)",
+                          borderRadius: 10,
+                          padding: "8px 10px",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          const l = editLinkInput.trim();
+                          if (!l) return;
+                          setEditLinks((arr) => [...arr, l]);
+                          setEditLinkInput("");
+                        }}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                        }}
+                      >
+                        Add link
+                      </button>
+                    </div>
+                    {editLinks.length > 0 && (
+                      <ul
+                        style={{
+                          listStyle: "disc",
+                          paddingLeft: 20,
+                          margin: 0,
+                        }}
+                      >
+                        {editLinks.map((l, i) => (
+                          <li
+                            key={i}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <a
+                              href={toExternalHref(l)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                flex: 1,
+                                color: "var(--muted)",
+                                textDecoration: "underline",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {l}
+                            </a>
+                            <button
+                              onClick={() =>
+                                setEditLinks((arr) =>
+                                  arr.filter((_, j) => j !== i)
+                                )
+                              }
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: 8,
+                                border: "1px solid var(--border)",
+                                background: "transparent",
+                                color: "var(--foreground)",
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <textarea
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      placeholder="Notes"
+                      rows={3}
+                      onPaste={onPaste}
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        background: "transparent",
+                        color: "var(--foreground)",
+                      }}
+                    />
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={onDrop}
+                      onPaste={onPaste}
+                      style={{
+                        border: `1px dashed ${isDragging ? "var(--accent)" : "var(--border)"}`,
+                        borderRadius: 10,
+                        padding: 12,
+                        background: "var(--surface-2)",
+                        color: "var(--muted)",
+                      }}
+                    >
+                      Drag & drop photos here, paste images, or add a photo URL
+                      below.
+                    </div>
+                    {editPhotos.length > 0 && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fill, minmax(100px, 1fr))",
+                          gap: 8,
+                        }}
+                      >
+                        {editPhotos.map((p, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 8,
+                              overflow: "hidden",
+                              background: "var(--surface-2)",
+                            }}
+                          >
+                            {safeImageSrc(p) ? (
+                              <img
+                                src={safeImageSrc(p) as string}
+                                alt={`photo-${i}`}
+                                style={{
+                                  width: "100%",
+                                  height: 180,
+                                  objectFit: "cover",
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{ padding: 12, color: "var(--muted)" }}
+                              >
+                                Invalid URL
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <button
+                        onClick={saveEditIdea}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingIdx(null)}
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <div style={{ fontWeight: 600, flex: 1 }}>
+                        {idea.title}
+                      </div>
+                      <button
+                        onClick={() => beginEditIdea(idx)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                          marginRight: 8,
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => removeIdea({ personId, index: idx })}
                         style={{
                           padding: "6px 10px",
                           borderRadius: 8,

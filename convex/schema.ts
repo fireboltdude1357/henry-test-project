@@ -147,6 +147,16 @@ const applicationTables = {
         })
       )
     ),
+    giftIdeas: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          links: v.array(v.string()),
+          notes: v.string(),
+          photos: v.array(v.string()),
+        })
+      )
+    ),
     tripIdeas: v.optional(
       v.array(
         v.object({
