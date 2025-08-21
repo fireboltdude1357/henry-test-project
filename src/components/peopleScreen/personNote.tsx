@@ -882,6 +882,21 @@ export default function PersonNote({
             todos?: { text: string; completed: boolean }[];
           }[])
         : []) || [];
+    // Partition custom info into value-only and list/todo types
+    const customValueItems = existingCustom
+      .map((ci, idx) => ({ ci, idx }))
+      .filter(
+        ({ ci }) =>
+          (!Array.isArray(ci.list) || ci.list.length === 0) &&
+          (!Array.isArray(ci.todos) || ci.todos.length === 0)
+      );
+    const customListTodoItems = existingCustom
+      .map((ci, idx) => ({ ci, idx }))
+      .filter(
+        ({ ci }) =>
+          (Array.isArray(ci.list) && ci.list.length > 0) ||
+          (Array.isArray(ci.todos) && ci.todos.length > 0)
+      );
     const [customLabel, setCustomLabel] = useState("");
     const [customValue, setCustomValue] = useState("");
     const [customOpen, setCustomOpen] = useState(false);
@@ -1360,41 +1375,49 @@ export default function PersonNote({
         }}
       >
         <div style={{ fontSize: 18, fontWeight: 600 }}>Basic Info</div>
-        {renderRow(
-          "Name",
-          personData?.name,
-          isEditingName,
-          setIsEditingName,
-          nameInput,
-          setNameInput,
-          "Enter name"
-        )}
-        {renderRow(
-          "Birthday",
-          personData?.birthday,
-          isEditingBirthday,
-          setIsEditingBirthday,
-          birthdayInput,
-          setBirthdayInput,
-          "mm/dd/yyyy",
-          true,
-          "birthday"
-        )}
-        {renderRow(
-          "Anniversary",
-          personData &&
-            typeof (personData as Record<string, unknown>).anniversary ===
-              "string"
-            ? ((personData as Record<string, unknown>).anniversary as string)
-            : undefined,
-          isEditingAnniversary,
-          setIsEditingAnniversary,
-          anniversaryInput,
-          setAnniversaryInput,
-          "mm/dd/yyyy",
-          true,
-          "anniversary"
-        )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {renderRow(
+            "Name",
+            personData?.name,
+            isEditingName,
+            setIsEditingName,
+            nameInput,
+            setNameInput,
+            "Enter name"
+          )}
+          {renderRow(
+            "Birthday",
+            personData?.birthday,
+            isEditingBirthday,
+            setIsEditingBirthday,
+            birthdayInput,
+            setBirthdayInput,
+            "mm/dd/yyyy",
+            true,
+            "birthday"
+          )}
+          {renderRow(
+            "Anniversary",
+            personData &&
+              typeof (personData as Record<string, unknown>).anniversary ===
+                "string"
+              ? ((personData as Record<string, unknown>).anniversary as string)
+              : undefined,
+            isEditingAnniversary,
+            setIsEditingAnniversary,
+            anniversaryInput,
+            setAnniversaryInput,
+            "mm/dd/yyyy",
+            true,
+            "anniversary"
+          )}
+        </div>
         {/* Custom Info */}
         <div style={{ marginTop: 8 }}>
           <div
@@ -1420,30 +1443,181 @@ export default function PersonNote({
               {customOpen ? "Close" : "Add"}
             </button>
           </div>
-          {existingCustom.length > 0 && (
+          {customValueItems.length > 0 && (
+            <div style={{ display: "grid", gap: 10, marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, color: "var(--muted)" }}>
+                More Info
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: 10,
+                }}
+              >
+                {customValueItems.map(({ ci, idx }) => (
+                  <div
+                    key={`${ci.label}-${idx}`}
+                    style={{
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      padding: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ width: 140, color: "var(--muted)" }}>
+                      {ci.label}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      {editingIdx === idx ? (
+                        <input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          placeholder="Value"
+                          style={{
+                            width: "100%",
+                            border: "1px solid var(--border)",
+                            borderRadius: 10,
+                            padding: "8px 10px",
+                            background: "transparent",
+                            color: "var(--foreground)",
+                          }}
+                        />
+                      ) : (
+                        <span>{ci.value}</span>
+                      )}
+                    </div>
+                    {editingIdx === idx ? (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={saveEdit}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "transparent",
+                            color: "var(--foreground)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingIdx(null)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "transparent",
+                            color: "var(--foreground)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => beginEdit(idx)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "transparent",
+                            color: "var(--foreground)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteCustom(idx)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "transparent",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {customListTodoItems.length > 0 && (
             <ul
               style={{
                 listStyle: "none",
                 padding: 0,
                 margin: 0,
                 display: "grid",
-                gap: 6,
+                gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                gap: 12,
               }}
             >
-              {existingCustom.map((ci, idx) => (
+              {customListTodoItems.map(({ ci, idx }) => (
                 <li
                   key={`${ci.label}-${idx}`}
                   style={{
+                    background: "var(--surface-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 12,
+                    padding: 12,
                     display: "grid",
-                    gridTemplateColumns: "140px 1fr auto",
-                    alignItems: "start",
-                    gap: 8,
+                    gap: 10,
                   }}
                 >
-                  <div style={{ width: 140, color: "var(--muted)" }}>
-                    {ci.label}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>{ci.label}</div>
+                    {editingIdx !== idx && (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => beginEdit(idx)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "transparent",
+                            color: "var(--foreground)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteCustom(idx)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid var(--border)",
+                            background: "transparent",
+                            color: "#ef4444",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div>
                     {editingIdx === idx ? (
                       <div style={{ display: "grid", gap: 8 }}>
                         <div
@@ -1703,6 +1877,11 @@ export default function PersonNote({
                                           )
                                         )
                                       }
+                                      className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
+                                        it.completed
+                                          ? "text-green-600 focus:ring-green-500"
+                                          : "text-blue-600 focus:ring-blue-500"
+                                      }`}
                                     />
                                     <span style={{ flex: 1 }}>{it.text}</span>
                                     <button
@@ -1766,6 +1945,11 @@ export default function PersonNote({
                                   customInfo: updated,
                                 });
                               }}
+                              className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
+                                todo.completed
+                                  ? "text-green-600 focus:ring-green-500"
+                                  : "text-blue-600 focus:ring-blue-500"
+                              }`}
                             />
                             <span
                               style={{
@@ -1815,67 +1999,36 @@ export default function PersonNote({
                       <span>{ci.value}</span>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {editingIdx === idx ? (
-                      <>
-                        <button
-                          onClick={saveEdit}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border)",
-                            background: "transparent",
-                            color: "var(--foreground)",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingIdx(null)}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border)",
-                            background: "transparent",
-                            color: "var(--foreground)",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => beginEdit(idx)}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border)",
-                            background: "transparent",
-                            color: "var(--foreground)",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deleteCustom(idx)}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            border: "1px solid var(--border)",
-                            background: "transparent",
-                            color: "#ef4444",
-                            cursor: "pointer",
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {editingIdx === idx && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={saveEdit}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => setEditingIdx(null)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "var(--foreground)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
