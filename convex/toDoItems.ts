@@ -1,6 +1,36 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+// Normalize contiguous mainOrder for uncompleted siblings within the same parent scope
+async function normalizeMainOrder(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  parentId: Id<"toDoItems"> | undefined
+) {
+  const siblings = await ctx.db
+    .query("toDoItems")
+    .withIndex("by_user_and_order", (q) => q.eq("userId", userId))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("completed"), false),
+        q.eq(q.field("parentId"), parentId)
+      )
+    )
+    .collect();
+
+  const ordered = siblings
+    .slice()
+    .sort((a, b) => (a.mainOrder || 0) - (b.mainOrder || 0));
+
+  for (let i = 0; i < ordered.length; i++) {
+    const desired = i + 1;
+    if (ordered[i].mainOrder !== desired) {
+      await ctx.db.patch(ordered[i]._id, { mainOrder: desired });
+    }
+  }
+}
 
 export const get = query({
   args: {},
@@ -51,7 +81,7 @@ export const create = mutation({
         throw new Error("Parent item not found");
       }
     }
-    return await ctx.db.insert("toDoItems", {
+    const inserted = await ctx.db.insert("toDoItems", {
       text: args.text,
       completed: false,
       mainOrder: args.order,
@@ -61,6 +91,8 @@ export const create = mutation({
       expanded:
         args.type === "project" || args.type === "folder" ? false : undefined,
     });
+    await normalizeMainOrder(ctx, userId._id, args.parentId);
+    return inserted;
   },
 });
 
@@ -70,7 +102,24 @@ export const updateOrder = mutation({
     order: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.patch(args.id, { mainOrder: args.order });
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+    const user = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (user === null) {
+      throw new Error("User not found");
+    }
+    const item = await ctx.db.get(args.id);
+    if (!item) throw new Error("To-do item not found");
+    if (item.userId !== user._id) throw new Error("Forbidden");
+
+    await ctx.db.patch(args.id, { mainOrder: args.order });
+    await normalizeMainOrder(ctx, user._id, item.parentId);
+    return null;
   },
 });
 
@@ -139,10 +188,12 @@ export const toggleComplete = mutation({
       }
 
       // Remove the main order from the completed item
-      return await ctx.db.patch(args.id, {
+      const result = await ctx.db.patch(args.id, {
         completed: newCompletedState,
         mainOrder: undefined,
       });
+      await normalizeMainOrder(ctx, userId._id, toDoItem.parentId);
+      return result;
     } else {
       // Uncompleting an item: add it to the end of the order
 
@@ -164,10 +215,12 @@ export const toggleComplete = mutation({
           : 0;
 
       // Assign the item to the end of the order
-      return await ctx.db.patch(args.id, {
+      const result = await ctx.db.patch(args.id, {
         completed: newCompletedState,
         mainOrder: maxOrder + 1,
       });
+      await normalizeMainOrder(ctx, userId._id, toDoItem.parentId);
+      return result;
     }
   },
 });
@@ -221,14 +274,18 @@ export const deleteItem = mutation({
 
     let updatedCount = 0;
     if (deletedOrder !== undefined) {
-      // Get all items with order greater than the deleted item's order
       const itemsToUpdate = await ctx.db
         .query("toDoItems")
         .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-        .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+        .filter((q) =>
+          q.and(
+            q.gt(q.field("mainOrder"), deletedOrder),
+            q.eq(q.field("parentId"), itemToDelete.parentId),
+            q.eq(q.field("completed"), false)
+          )
+        )
         .collect();
 
-      // Update their orders to close the gap
       for (const item of itemsToUpdate) {
         if (item.mainOrder !== undefined) {
           await ctx.db.patch(item._id, {
@@ -238,6 +295,8 @@ export const deleteItem = mutation({
       }
       updatedCount = itemsToUpdate.length;
     }
+
+    await normalizeMainOrder(ctx, userId._id, itemToDelete.parentId);
 
     return {
       deletedOrder,
@@ -300,14 +359,18 @@ export const deleteProject = mutation({
 
     let updatedCount = 0;
     if (deletedOrder !== undefined) {
-      // Get all items with order greater than the deleted project's order
       const itemsToUpdate = await ctx.db
         .query("toDoItems")
         .withIndex("by_user_and_order", (q) => q.eq("userId", userId._id))
-        .filter((q) => q.gt(q.field("mainOrder"), deletedOrder))
+        .filter((q) =>
+          q.and(
+            q.gt(q.field("mainOrder"), deletedOrder),
+            q.eq(q.field("parentId"), projectToDelete.parentId),
+            q.eq(q.field("completed"), false)
+          )
+        )
         .collect();
 
-      // Update their orders to close the gap
       for (const item of itemsToUpdate) {
         if (item.mainOrder !== undefined) {
           await ctx.db.patch(item._id, {
@@ -317,6 +380,8 @@ export const deleteProject = mutation({
       }
       updatedCount = itemsToUpdate.length;
     }
+
+    await normalizeMainOrder(ctx, userId._id, projectToDelete.parentId);
 
     return { deletedOrder, updatedCount };
   },
