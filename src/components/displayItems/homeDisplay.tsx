@@ -37,27 +37,30 @@ export const HomeDisplay = ({
             Active Tasks ({activeTasks.length})
           </h3>
           <div className="space-y-3">
-            {activeTasks.map(({ _id, text, completed, mainOrder, type }) => (
-              <ItemCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={async () => {
-                  await toggleComplete(_id as Id<"toDoItems">);
-                }}
-                deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder || -1}
-                setAdditionParentId={setAdditionParentId}
-                type={type || "task"}
-              />
-            ))}
+            {activeTasks.map(
+              ({ _id, text, completed, mainOrder, type, expanded }) => (
+                <ItemCard
+                  key={_id}
+                  _id={_id}
+                  text={text}
+                  completed={completed}
+                  toggleComplete={async () => {
+                    await toggleComplete(_id as Id<"toDoItems">);
+                  }}
+                  deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
+                  onDragStart={() => handleDragStart(_id)}
+                  onDragEnd={() => handleDragEnd(_id)}
+                  onDragOver={(id, e) => handleDragOver(id, e)}
+                  onDragEnter={() => handleDragEnter(_id)}
+                  onDragLeave={() => handleDragLeave(_id)}
+                  draggedOverItemId={draggedOverItemId}
+                  mainOrder={mainOrder || -1}
+                  setAdditionParentId={setAdditionParentId}
+                  type={type || "task"}
+                  expanded={expanded}
+                />
+              )
+            )}
             {/* Invisible bottom drop zone */}
             <div
               id="bottom"
@@ -84,27 +87,30 @@ export const HomeDisplay = ({
             Completed Tasks ({completedTasks.length})
           </h3>
           <div className="space-y-3">
-            {completedTasks.map(({ _id, text, completed, mainOrder, type }) => (
-              <ItemCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={async () => {
-                  await toggleComplete(_id as Id<"toDoItems">);
-                }}
-                deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder || -1}
-                type={type || "task"}
-                setAdditionParentId={setAdditionParentId}
-              />
-            ))}
+            {completedTasks.map(
+              ({ _id, text, completed, mainOrder, type, expanded }) => (
+                <ItemCard
+                  key={_id}
+                  _id={_id}
+                  text={text}
+                  completed={completed}
+                  toggleComplete={async () => {
+                    await toggleComplete(_id as Id<"toDoItems">);
+                  }}
+                  deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
+                  onDragStart={() => handleDragStart(_id)}
+                  onDragEnd={() => handleDragEnd(_id)}
+                  onDragOver={(id, e) => handleDragOver(id, e)}
+                  onDragEnter={() => handleDragEnter(_id)}
+                  onDragLeave={() => handleDragLeave(_id)}
+                  draggedOverItemId={draggedOverItemId}
+                  mainOrder={mainOrder || -1}
+                  type={type || "task"}
+                  setAdditionParentId={setAdditionParentId}
+                  expanded={expanded}
+                />
+              )
+            )}
           </div>
         </div>
       )}

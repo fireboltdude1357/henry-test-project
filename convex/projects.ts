@@ -52,6 +52,8 @@ export const createChild = mutation({
       userId: userId._id,
       type: args.type,
       parentId: args.parentId,
+      expanded:
+        args.type === "project" || args.type === "folder" ? true : undefined,
     });
   },
 });

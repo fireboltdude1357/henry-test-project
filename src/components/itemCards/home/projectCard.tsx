@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { playCompletionPop } from "../../../utils/sounds";
 import { ItemCard } from "./itemCard";
 
@@ -20,6 +20,7 @@ export const ProjectCard = ({
   draggedOverItemId,
   mainOrder,
   setAdditionParentId,
+  expanded,
 }: {
   _id: string;
   text: string;
@@ -34,13 +35,19 @@ export const ProjectCard = ({
   draggedOverItemId?: string | null;
   mainOrder: number;
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
+  expanded?: boolean;
 }) => {
   const isDraggedOver = draggedOverItemId === _id;
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const deleteChildItem = useMutation(api.toDoItems.deleteItem);
   const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteProject = useMutation(api.toDoItems.deleteProject);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const setExpandedMutation = useMutation(api.toDoItems.setExpanded);
+  const [isExpanded, setIsExpanded] = useState(expanded ?? true);
+
+  useEffect(() => {
+    setIsExpanded(expanded ?? true);
+  }, [expanded]);
 
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
@@ -166,8 +173,12 @@ export const ProjectCard = ({
     }
   };
 
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
+  const toggleExpanded = async () => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    try {
+      await setExpandedMutation({ id: _id as Id<"toDoItems">, expanded: next });
+    } catch {}
   };
   const completedChildren = children?.filter((child) => child.completed);
   const uncompletedChildren = children?.filter((child) => !child.completed);
@@ -324,6 +335,7 @@ export const ProjectCard = ({
               mainOrder={child.mainOrder ?? 0}
               setAdditionParentId={setAdditionParentId}
               type={child.type || "task"}
+              expanded={child.expanded}
             />
           ))}
           {/* Bottom drop zone for child items */}
@@ -361,6 +373,7 @@ export const ProjectCard = ({
               }
               mainOrder={child.mainOrder ?? 0}
               type={child.type || "task"}
+              expanded={child.expanded}
             />
           ))}
         </div>

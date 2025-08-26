@@ -30,6 +30,7 @@ const applicationTables = {
     parentId: v.optional(v.id("toDoItems")),
     // dueDate: v.optional(v.string()),
     assignedDate: v.optional(v.string()),
+    expanded: v.optional(v.boolean()),
   })
     .index("by_user_and_order", ["userId", "mainOrder"])
     .index("by_user_type_and_order", ["userId", "type", "mainOrder"])
