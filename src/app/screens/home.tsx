@@ -44,20 +44,8 @@ export default function HomeScreen({
         } else {
           interval = -1;
         }
-        for (
-          let i = movingItemOldOrder + interval;
-          i !== movingItemNewOrder + interval;
-          i += interval
-        ) {
-          const item = toDoItems?.find((item) => item.mainOrder === i);
-          if (item && item.mainOrder !== undefined) {
-            updateOrder({
-              id: item._id as Id<"toDoItems">,
-              order: item.mainOrder! - interval,
-            });
-          }
-        }
-        updateOrder({
+        // Only set the dragged item's target order; server will normalize within scope
+        await updateOrder({
           id: draggedItemId as Id<"toDoItems">,
           order: movingItemNewOrder,
         });
