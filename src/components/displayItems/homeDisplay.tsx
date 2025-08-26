@@ -38,7 +38,7 @@ export const HomeDisplay = ({
           </h3>
           <div className="space-y-3">
             {activeTasks.map(
-              ({ _id, text, completed, mainOrder, type, expanded }) => (
+              ({ _id, text, completed, mainOrder, type, expanded, color }) => (
                 <ItemCard
                   key={_id}
                   _id={_id}
@@ -58,6 +58,7 @@ export const HomeDisplay = ({
                   setAdditionParentId={setAdditionParentId}
                   type={type || "task"}
                   expanded={expanded}
+                  color={color}
                 />
               )
             )}
@@ -88,7 +89,7 @@ export const HomeDisplay = ({
           </h3>
           <div className="space-y-3">
             {completedTasks.map(
-              ({ _id, text, completed, mainOrder, type, expanded }) => (
+              ({ _id, text, completed, mainOrder, type, expanded, color }) => (
                 <ItemCard
                   key={_id}
                   _id={_id}
@@ -108,6 +109,7 @@ export const HomeDisplay = ({
                   type={type || "task"}
                   setAdditionParentId={setAdditionParentId}
                   expanded={expanded}
+                  color={color}
                 />
               )
             )}

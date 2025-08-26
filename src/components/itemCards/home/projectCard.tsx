@@ -21,6 +21,7 @@ export const ProjectCard = ({
   mainOrder,
   setAdditionParentId,
   expanded,
+  color,
 }: {
   _id: string;
   text: string;
@@ -36,6 +37,7 @@ export const ProjectCard = ({
   mainOrder: number;
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
   expanded?: boolean;
+  color?: string;
 }) => {
   const isDraggedOver = draggedOverItemId === _id;
   const updateOrder = useMutation(api.toDoItems.updateOrder);
@@ -44,6 +46,8 @@ export const ProjectCard = ({
   const deleteProject = useMutation(api.toDoItems.deleteProject);
   const setExpandedMutation = useMutation(api.toDoItems.setExpanded);
   const [isExpanded, setIsExpanded] = useState(expanded ?? true);
+  const setColorMutation = useMutation(api.toDoItems.setColor);
+  const [localColor, setLocalColor] = useState<string | undefined>(color);
 
   useEffect(() => {
     setIsExpanded(expanded ?? true);
@@ -209,6 +213,14 @@ export const ProjectCard = ({
             ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
             : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
         }`}
+        style={
+          localColor
+            ? {
+                backgroundColor: `rgba(${parseInt(localColor.slice(1, 3), 16)}, ${parseInt(localColor.slice(3, 5), 16)}, ${parseInt(localColor.slice(5, 7), 16)}, 0.12)`,
+                borderColor: `rgba(${parseInt(localColor.slice(1, 3), 16)}, ${parseInt(localColor.slice(3, 5), 16)}, ${parseInt(localColor.slice(5, 7), 16)}, 0.6)`,
+              }
+            : undefined
+        }
       >
         <div className="flex items-center gap-3">
           <input
@@ -227,7 +239,8 @@ export const ProjectCard = ({
           />
           <button
             onClick={toggleExpanded}
-            className="flex items-center text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
+            className="flex items-center text-sm mr-2 transition-colors"
+            style={{ color: "#ffffff" }}
             title={isExpanded ? "Collapse project" : "Expand project"}
           >
             <svg
@@ -247,6 +260,32 @@ export const ProjectCard = ({
             </svg>
             📁
           </button>
+          {/* Color picker */}
+          <div className="relative">
+            <label
+              htmlFor={`color-${_id}`}
+              className="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 transition-all duration-200 cursor-pointer"
+              title="Set color"
+            >
+              🎨
+            </label>
+            <input
+              id={`color-${_id}`}
+              type="color"
+              value={localColor || "#6b21a8"}
+              onChange={async (e) => {
+                const next = e.target.value;
+                setLocalColor(next);
+                try {
+                  await setColorMutation({
+                    id: _id as Id<"toDoItems">,
+                    color: next,
+                  });
+                } catch {}
+              }}
+              className="absolute left-0 top-0 opacity-0 w-0 h-0 pointer-events-none"
+            />
+          </div>
           <span
             className={`flex-1 transition-colors duration-200 font-medium ${
               completed
@@ -283,7 +322,7 @@ export const ProjectCard = ({
               </svg>
             </button>
           )}
-          <span className="text-purple-400 text-xs">({mainOrder})</span>
+          <span className="text-white text-xs">({mainOrder})</span>
           <button
             onClick={handleDelete}
             className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"

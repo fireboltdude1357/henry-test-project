@@ -113,13 +113,47 @@ export const updateOrder = mutation({
     if (user === null) {
       throw new Error("User not found");
     }
-    const item = await ctx.db.get(args.id);
-    if (!item) throw new Error("To-do item not found");
-    if (item.userId !== user._id) throw new Error("Forbidden");
 
-    await ctx.db.patch(args.id, { mainOrder: args.order });
-    await normalizeMainOrder(ctx, user._id, item.parentId);
-    return null;
+    const moving = await ctx.db.get(args.id);
+    if (!moving) throw new Error("To-do item not found");
+    if (moving.userId !== user._id)
+      throw new Error("To-do item does not belong to user");
+
+    // Fetch uncompleted siblings within the same parent scope
+    const siblings = await ctx.db
+      .query("toDoItems")
+      .withIndex("by_user_and_order", (q) => q.eq("userId", user._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("completed"), false),
+          q.eq(q.field("parentId"), moving.parentId)
+        )
+      )
+      .collect();
+
+    // Sort by current mainOrder (undefined treated as high)
+    const sorted = siblings
+      .filter((s) => s._id !== moving._id)
+      .sort((a, b) => (a.mainOrder || 1e9) - (b.mainOrder || 1e9));
+
+    // Target position is 1-based; clamp into [1, N+1]
+    const N = sorted.length;
+    const target = Math.max(1, Math.min(args.order, N + 1));
+
+    // Build new ordered list inserting the moving item BEFORE target
+    const before = sorted.slice(0, target - 1);
+    const after = sorted.slice(target - 1);
+    const newList = [...before, moving, ...after];
+
+    // Persist contiguous 1..N+1 ordering
+    for (let i = 0; i < newList.length; i++) {
+      const desired = i + 1;
+      if (newList[i].mainOrder !== desired) {
+        await ctx.db.patch(newList[i]._id, { mainOrder: desired });
+      }
+    }
+
+    return { newOrder: target };
   },
 });
 
@@ -412,6 +446,31 @@ export const setExpanded = mutation({
       throw new Error("To-do item does not belong to user");
     }
     return await ctx.db.patch(args.id, { expanded: args.expanded });
+  },
+});
+
+export const setColor = mutation({
+  args: {
+    id: v.id("toDoItems"),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+    const item = await ctx.db.get(args.id);
+    if (!item) throw new Error("To-do item not found");
+    if (item.userId !== userId._id)
+      throw new Error("To-do item does not belong to user");
+    return await ctx.db.patch(args.id, { color: args.color });
   },
 });
 
