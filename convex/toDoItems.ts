@@ -58,6 +58,8 @@ export const create = mutation({
       userId: userId._id,
       type: args.type,
       parentId: args.parentId,
+      expanded:
+        args.type === "project" || args.type === "folder" ? false : undefined,
     });
   },
 });
@@ -317,6 +319,34 @@ export const deleteProject = mutation({
     }
 
     return { deletedOrder, updatedCount };
+  },
+});
+
+export const setExpanded = mutation({
+  args: {
+    id: v.id("toDoItems"),
+    expanded: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+    const item = await ctx.db.get(args.id);
+    if (item === null) {
+      throw new Error("To-do item not found");
+    }
+    if (item.userId !== userId._id) {
+      throw new Error("To-do item does not belong to user");
+    }
+    return await ctx.db.patch(args.id, { expanded: args.expanded });
   },
 });
 

@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { playCompletionPop } from "../../../utils/sounds";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ItemCard } from "./itemCard";
 
 export const ProjectCard = ({
@@ -24,6 +24,7 @@ export const ProjectCard = ({
   setDraggedItemId,
   setChildDraggedOverItemId,
   childDraggedOverItemId,
+  expanded,
 }: {
   _id: string;
   text: string;
@@ -43,6 +44,7 @@ export const ProjectCard = ({
   setChildDraggedOverItemId: (id: string | null) => void;
   childDraggedOverItemId: string | null;
   childDraggedItemId: string | null;
+  expanded?: boolean;
 }) => {
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
@@ -60,7 +62,12 @@ export const ProjectCard = ({
   const toggleChildComplete = useMutation(api.toDoItems.toggleComplete);
   // const deleteProject = useMutation(api.toDoItems.deleteProject);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const setExpandedMutation = useMutation(api.toDoItems.setExpanded);
+  const [isExpanded, setIsExpanded] = useState(expanded ?? true);
+
+  useEffect(() => {
+    setIsExpanded(expanded ?? true);
+  }, [expanded]);
 
   // children query moved above
 
@@ -253,7 +260,16 @@ export const ProjectCard = ({
             }`}
           />
           <button
-            onClick={() => setIsExpanded((v) => !v)}
+            onClick={async () => {
+              const next = !isExpanded;
+              setIsExpanded(next);
+              try {
+                await setExpandedMutation({
+                  id: _id as Id<"toDoItems">,
+                  expanded: next,
+                });
+              } catch {}
+            }}
             className="text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
             title={isExpanded ? "Collapse project" : "Expand project"}
           >
@@ -318,6 +334,7 @@ export const ProjectCard = ({
               setChildDraggedOverItemId={setChildDraggedOverItemId}
               childDraggedOverItemId={childDraggedOverItemId}
               childDraggedItemId={null}
+              expanded={child.expanded}
             />
           ))}
         </div>

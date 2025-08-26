@@ -17,6 +17,7 @@ interface ItemCardProps {
   mainOrder: number;
   type: "task" | "project" | "folder";
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
+  expanded?: boolean;
 }
 
 export const ItemCard = ({ type, ...props }: ItemCardProps) => {

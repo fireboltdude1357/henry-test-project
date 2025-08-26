@@ -48,7 +48,15 @@ export const CalendarItemDisplay = ({
           </h3>
           <div className="space-y-3">
             {activeTasks.map(
-              ({ _id, text, completed, mainOrder, type, parentId }) => {
+              ({
+                _id,
+                text,
+                completed,
+                mainOrder,
+                type,
+                parentId,
+                expanded,
+              }) => {
                 // Only show highlight when dragging within the same layer:
                 // - If the dragged item has a parent, only highlight items with that same parent
                 // - If the dragged item has no parent, only highlight top-level items
@@ -95,6 +103,7 @@ export const CalendarItemDisplay = ({
                     // control highlight strictly by same-layer logic
                     showHighlight={showHighlight}
                     draggedItemIsChild={Boolean(dragged?.parentId)}
+                    expanded={expanded}
                   />
                 );
               }
@@ -137,32 +146,35 @@ export const CalendarItemDisplay = ({
             Completed Tasks ({completedTasks.length})
           </h3>
           <div className="space-y-3">
-            {completedTasks.map(({ _id, text, completed, mainOrder, type }) => (
-              <ItemCard
-                key={_id}
-                _id={_id}
-                text={text}
-                completed={completed}
-                toggleComplete={async () => {
-                  await toggleComplete(_id as Id<"toDoItems">);
-                }}
-                deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
-                onDragStart={() => handleDragStart(_id)}
-                onDragEnd={() => handleDragEnd(_id)}
-                onDragOver={(id, e) => handleDragOver(id, e)}
-                onDragEnter={() => handleDragEnter(_id)}
-                onDragLeave={() => handleDragLeave(_id)}
-                draggedOverItemId={draggedOverItemId}
-                mainOrder={mainOrder ?? 0}
-                type={type || "task"}
-                draggedItemId={draggedItemId}
-                setDraggedItemId={setDraggedItemId}
-                setChildDraggedOverItemId={setChildDraggedOverItemId}
-                childDraggedOverItemId={childDraggedOverItemId}
-                childDraggedItemId={childDraggedItemId}
-                setChildDraggedItemId={setChildDraggedItemId}
-              />
-            ))}
+            {completedTasks.map(
+              ({ _id, text, completed, mainOrder, type, expanded }) => (
+                <ItemCard
+                  key={_id}
+                  _id={_id}
+                  text={text}
+                  completed={completed}
+                  toggleComplete={async () => {
+                    await toggleComplete(_id as Id<"toDoItems">);
+                  }}
+                  deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
+                  onDragStart={() => handleDragStart(_id)}
+                  onDragEnd={() => handleDragEnd(_id)}
+                  onDragOver={(id, e) => handleDragOver(id, e)}
+                  onDragEnter={() => handleDragEnter(_id)}
+                  onDragLeave={() => handleDragLeave(_id)}
+                  draggedOverItemId={draggedOverItemId}
+                  mainOrder={mainOrder ?? 0}
+                  type={type || "task"}
+                  draggedItemId={draggedItemId}
+                  setDraggedItemId={setDraggedItemId}
+                  setChildDraggedOverItemId={setChildDraggedOverItemId}
+                  childDraggedOverItemId={childDraggedOverItemId}
+                  childDraggedItemId={childDraggedItemId}
+                  setChildDraggedItemId={setChildDraggedItemId}
+                  expanded={expanded}
+                />
+              )
+            )}
           </div>
         </div>
       )}
