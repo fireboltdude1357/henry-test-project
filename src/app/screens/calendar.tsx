@@ -223,10 +223,7 @@ export default function CalendarScreen({
         <div className="w-full">
           <div className="grid grid-cols-[380px_1fr] gap-0 min-h-screen items-stretch">
             {/* Left Side - Flush Task List, full height */}
-            <div
-              className="bg-[var(--surface-1)]/60 backdrop-blur-xl border-r border-[var(--border)] rounded-none min-h-screen sticky"
-              style={{ top: "var(--app-header-h)" }}
-            >
+            <div className="bg-[var(--surface-1)]/60 backdrop-blur-xl border-r border-[var(--border)] rounded-none min-h-screen">
               <div className="h-full flex flex-col">
                 <div className="px-4 py-5 flex-1 overflow-auto">
                   <CalendarItemDisplay
@@ -252,20 +249,22 @@ export default function CalendarScreen({
               </div>
             </div>
 
-            {/* Right Side - Main Calendar Area */}
+            {/* Right Side - Main Calendar Area (fixed) */}
             <div
-              className="space-y-6 px-6 pt-10 sticky overflow-auto"
+              className="px-6 pt-10 fixed overflow-hidden flex flex-col gap-6"
               style={{
                 top: "var(--app-header-h)",
-                maxHeight: "calc(100vh - var(--app-header-h))",
+                left: "380px",
+                right: 0,
+                bottom: 0,
               }}
             >
               {/* Local controls now live here */}
 
               {/* Navigation */}
               <div
-                className="flex items-center justify-between bg-[var(--surface-1)]/60 rounded-xl p-4 border border-[var(--border)] backdrop-blur-xl sticky z-30"
-                style={{ top: 0, height: "var(--calendar-controls-h)" }}
+                className="flex items-center justify-between bg-[var(--surface-1)]/60 rounded-xl p-4 border border-[var(--border)] backdrop-blur-xl flex-none"
+                style={{ height: "var(--calendar-controls-h)" }}
               >
                 <button
                   onClick={goBackManyDays}
@@ -409,15 +408,12 @@ export default function CalendarScreen({
 
               {/* Day Grid */}
               <div
-                className={`grid gap-6 ${
-                  numDays === 1
-                    ? "grid-cols-1"
-                    : numDays <= 3
-                      ? "grid-cols-1 xl:grid-cols-3"
-                      : numDays <= 5
-                        ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
-                        : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
-                }`}
+                className={
+                  "grid gap-6 flex-1 overflow-hidden min-h-0 items-stretch"
+                }
+                style={{
+                  gridTemplateColumns: `repeat(${numDays}, minmax(0, 1fr))`,
+                }}
               >
                 {dateRange.map((date) => (
                   <CalendarDay
