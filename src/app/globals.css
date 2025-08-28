@@ -10,6 +10,9 @@
   --muted: #94a3b8; /* slate-400 */
   --accent: #60a5fa; /* blue-400 */
   --accent-2: #a78bfa; /* purple-400 */
+  /* Layout sizing */
+  --app-header-h: 72px; /* sticky app header height */
+  --calendar-controls-h: 80px; /* controls bar height in calendar panel */
 }
 
 @theme inline {

@@ -808,7 +808,8 @@ export default function CalendarDay({
       >
         {/* Day Header */}
         <div
-          className="p-6 pb-4 border-b border-slate-700/50"
+          className="sticky z-20 p-6 pb-4 border-b border-slate-700/50 bg-slate-900/60 backdrop-blur-xl"
+          style={{ top: "var(--calendar-controls-h)" }}
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
