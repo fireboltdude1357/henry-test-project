@@ -408,15 +408,12 @@ export default function CalendarScreen({
 
               {/* Day Grid */}
               <div
-                className={`grid gap-6 flex-1 overflow-hidden min-h-0 items-stretch ${
-                  numDays === 1
-                    ? "grid-cols-1"
-                    : numDays <= 3
-                      ? "grid-cols-1 xl:grid-cols-3"
-                      : numDays <= 5
-                        ? "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"
-                        : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-4"
-                }`}
+                className={
+                  "grid gap-6 flex-1 overflow-hidden min-h-0 items-stretch"
+                }
+                style={{
+                  gridTemplateColumns: `repeat(${numDays}, minmax(0, 1fr))`,
+                }}
               >
                 {dateRange.map((date) => (
                   <CalendarDay

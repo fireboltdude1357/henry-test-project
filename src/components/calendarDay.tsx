@@ -899,7 +899,7 @@ export default function CalendarDay({
               ? "border-blue-500 shadow-blue-500/20"
               : "border-slate-700/50 hover:border-slate-600"
         }`}
-        style={{ height: "75vh" }}
+        style={{ height: "100%" }}
       >
         {/* Day Header */}
         <div
