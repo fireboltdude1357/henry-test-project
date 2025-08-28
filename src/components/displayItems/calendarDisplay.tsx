@@ -46,7 +46,10 @@ export const CalendarItemDisplay = ({
           <h3 className="text-lg font-semibold text-white">
             Active Tasks ({activeTasks.length})
           </h3>
-          <div className="space-y-3">
+          <div
+            className="space-y-3 overflow-auto pr-2"
+            style={{ maxHeight: "40vh" }}
+          >
             {activeTasks.map(
               ({
                 _id,
