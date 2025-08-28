@@ -86,7 +86,7 @@ function CompletedDayItem({
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
               <div
-                className={`text-sm font-medium line-through text-slate-400 truncate`}
+                className={`text-sm font-medium line-through text-slate-400 whitespace-normal break-words`}
               >
                 {item?.text}
               </div>
@@ -287,7 +287,7 @@ function ProjectChildren({
               <span
                 className={
                   (child.completed ? "line-through opacity-70 " : "") +
-                  "flex-1 min-w-0 truncate"
+                  "flex-1 min-w-0 whitespace-normal break-words"
                 }
               >
                 {child.text}
@@ -497,7 +497,7 @@ function ProjectDayItem({
           <div
             ref={titleRef}
             onMouseEnter={measureTitle}
-            className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"} truncate`}
+            className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"} whitespace-normal break-words`}
           >
             {item?.text}
           </div>
@@ -857,7 +857,7 @@ export default function CalendarDay({
   };
 
   return (
-    <div>
+    <div className="">
       <div
         key={date}
         id={date}
@@ -890,7 +890,7 @@ export default function CalendarDay({
           e.stopPropagation();
           handleDragLeave(date);
         }}
-        className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
+        className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg flex flex-col min-h-0 overflow-hidden ${
           draggedOverItemId === date ||
           draggedOverItemId === `${date}-bottom` ||
           draggedOverItemId === `${date}-top`
@@ -899,11 +899,11 @@ export default function CalendarDay({
               ? "border-blue-500 shadow-blue-500/20"
               : "border-slate-700/50 hover:border-slate-600"
         }`}
+        style={{ height: "75vh" }}
       >
         {/* Day Header */}
         <div
-          className="sticky z-20 p-6 pb-4 border-b border-slate-700/50 bg-slate-900/60 backdrop-blur-xl"
-          style={{ top: "var(--calendar-controls-h)" }}
+          className="z-10 p-6 pb-4 border-b border-slate-700/50 bg-slate-900/60 backdrop-blur-xl"
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -957,7 +957,7 @@ export default function CalendarDay({
         </div>
 
         {/* Tasks for this day */}
-        <div className="p-6 pt-4">
+        <div className="p-6 pt-4 pb-6 overflow-auto" style={{ flex: 1 }}>
           <div className="space-y-3 mb-4">
             {dayItemsSorted.length > 0 ? (
               dayItemsSorted.map((item) =>
@@ -1070,7 +1070,7 @@ export default function CalendarDay({
                         : null}
                       <div className="flex-1 min-w-0">
                         <div
-                          className={`text-sm font-medium ${
+                          className={`text-sm font-medium whitespace-normal break-words ${
                             item?.completed
                               ? "line-through text-slate-400"
                               : "text-white"
