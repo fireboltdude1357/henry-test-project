@@ -2,7 +2,8 @@ import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../convex/_generated/api";
 // no local state needed currently
 import { Id } from "../../convex/_generated/dataModel";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 
 // Reusable pop sound for completion. Safe-guarded for SSR.
 let popAudio: HTMLAudioElement | null = null;
@@ -29,6 +30,7 @@ function CompletedDayItem({
   onDrop,
   calendarDay,
   toggleComplete,
+  parentTitle,
 }: {
   item: {
     _id: string;
@@ -42,6 +44,7 @@ function CompletedDayItem({
   onDrop: (token: string) => void;
   calendarDay: { items: Id<"toDoItems">[] } | null | undefined;
   toggleComplete: (id: Id<"toDoItems">) => void;
+  parentTitle?: string;
 }) {
   const dayIndex = calendarDay?.items
     ? calendarDay.items.findIndex(
@@ -80,28 +83,50 @@ function CompletedDayItem({
           </span>
         )}
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium line-through text-slate-400`}>
-            {item?.text}
-          </div>
-          {item?.type && (
-            <div className="flex items-center gap-1 mt-1">
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
               <div
-                className="w-2 h-2 rounded-full"
-                style={{
-                  backgroundColor:
-                    (item?.type as ToDoItemType) === "project"
-                      ? item?.color || "#a855f7"
-                      : (item?.type as ToDoItemType) === "task"
-                        ? "#3b82f6"
-                        : "#eab308",
-                }}
-              />
-              <span className="text-xs text-slate-400 capitalize">
-                {item?.type}
-              </span>
+                className={`text-sm font-medium line-through text-slate-400 truncate`}
+              >
+                {item?.text}
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                side="left"
+                align="center"
+                sideOffset={12}
+                collisionPadding={8}
+                className="z-[9999] rounded-md bg-slate-900/95 text-white text-xs px-2 py-1 border border-slate-700 shadow-md"
+              >
+                {`Content: ${item?.text}`}
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+          {parentTitle && (
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              in {parentTitle}
             </div>
           )}
         </div>
+        {item?.type && (
+          <div className="flex items-center gap-1 mt-1">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                backgroundColor:
+                  (item?.type as ToDoItemType) === "project"
+                    ? item?.color || "#a855f7"
+                    : (item?.type as ToDoItemType) === "task"
+                      ? "#3b82f6"
+                      : "#eab308",
+              }}
+            />
+            <span className="text-xs text-slate-400 capitalize">
+              {item?.type}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -257,9 +282,29 @@ function ProjectChildren({
             }}
             className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
           />
-          <span className={child.completed ? "line-through opacity-70" : ""}>
-            {child.text}
-          </span>
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <span
+                className={
+                  (child.completed ? "line-through opacity-70 " : "") +
+                  "flex-1 min-w-0 truncate"
+                }
+              >
+                {child.text}
+              </span>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                side="left"
+                align="center"
+                sideOffset={12}
+                collisionPadding={8}
+                className="z-[9999] rounded-md bg-slate-900/95 text-white text-xs px-2 py-1 border border-slate-700 shadow-md"
+              >
+                {`Content: ${child.text}`}
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
         </div>
       ))}
       {/* Bottom zone for child list */}
@@ -303,6 +348,7 @@ function ProjectDayItem({
   dragFromNested,
   setDragFromNested,
   clearDayHover,
+  parentTitle,
 }: {
   item: {
     _id: string;
@@ -325,6 +371,7 @@ function ProjectDayItem({
   dragFromNested: boolean;
   setDragFromNested: (v: boolean) => void;
   clearDayHover: () => void;
+  parentTitle?: string;
 }) {
   // Local state for child drag interactions within this project
   const [localChildDraggedOverId, setLocalChildDraggedOverId] = useState<
@@ -332,6 +379,20 @@ function ProjectDayItem({
   >(null);
   // Note: we do not track local child dragged id since it is not needed here
   const [expanded, setExpanded] = useState(false);
+  // Measure truncation for title tooltip
+  const titleRef = useRef<HTMLDivElement | null>(null);
+  const [isTitleTruncated, setIsTitleTruncated] = useState(false);
+  const measureTitle = () => {
+    const el = titleRef.current;
+    if (!el) return;
+    setIsTitleTruncated(el.scrollWidth > el.clientWidth);
+  };
+  useEffect(() => {
+    measureTitle();
+    const handler = () => measureTitle();
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [item?.text]);
   // dragFromNested is managed by parent so we can correlate day vs nested sources
   void dragFromNested; // reference to avoid unused warning in this scope
   return (
@@ -399,33 +460,57 @@ function ProjectDayItem({
           }}
           className="mt-0.5 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
         />
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-white text-sm mr-2 transition-colors"
-          title={expanded ? "Collapse" : "Expand"}
-        >
-          <svg
-            className={`w-4 h-4 mr-1 transition-transform duration-200 ${
-              expanded ? "rotate-90" : "rotate-0"
-            }`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
-        </button>
-        <div className="flex-1 min-w-0">
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-white text-sm mr-2 transition-colors"
+            >
+              <svg
+                className={`w-4 h-4 mr-1 transition-transform duration-200 ${
+                  expanded ? "rotate-90" : "rotate-0"
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              side="left"
+              sideOffset={8}
+              className="rounded-md bg-slate-900/95 text-white text-xs px-2 py-1 border border-slate-700 shadow-md"
+            >
+              {expanded ? "Collapse" : "Expand"}
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+        <div className="flex-1 min-w-0 relative group">
           <div
-            className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"}`}
+            ref={titleRef}
+            onMouseEnter={measureTitle}
+            className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"} truncate`}
           >
             {item?.text}
           </div>
+          {parentTitle && (
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              in {parentTitle}
+            </div>
+          )}
+          {isTitleTruncated && (
+            <div className="absolute left-0 bottom-full mb-1 z-[999] w-max max-w-[60ch] px-2 py-1 rounded bg-slate-900/95 text-slate-200 text-xs border border-slate-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm">
+              {`Content: ${item?.text}`}
+            </div>
+          )}
           {item?.type && (
             <div className="flex items-center gap-1 mt-1">
               <div
@@ -896,6 +981,11 @@ export default function CalendarDay({
                     dragFromNested={dragFromNested}
                     setDragFromNested={setDragFromNested}
                     clearDayHover={() => setDraggedOverItemId(null)}
+                    parentTitle={
+                      item?.parentId && toDoItems
+                        ? toDoItems.find((i) => i._id === item.parentId)?.text
+                        : undefined
+                    }
                   />
                 ) : item?.completed ? (
                   <CompletedDayItem
@@ -906,6 +996,11 @@ export default function CalendarDay({
                     onDrop={(token) => handleDropOnDay(token)}
                     calendarDay={calendarDay}
                     toggleComplete={(id) => toggleComplete({ id })}
+                    parentTitle={
+                      item?.parentId && toDoItems
+                        ? toDoItems.find((i) => i._id === item.parentId)?.text
+                        : undefined
+                    }
                   />
                 ) : (
                   <div
@@ -983,6 +1078,18 @@ export default function CalendarDay({
                         >
                           {item?.text}
                         </div>
+                        {item?.parentId && toDoItems
+                          ? (() => {
+                              const parent = toDoItems.find(
+                                (i) => i._id === item.parentId
+                              );
+                              return parent ? (
+                                <div className="text-[11px] text-slate-400 mt-0.5">
+                                  in {parent.text}
+                                </div>
+                              ) : null;
+                            })()
+                          : null}
                         {item?.type && (
                           <div className="flex items-center gap-1 mt-1">
                             <div

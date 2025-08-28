@@ -2,7 +2,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { playCompletionPop } from "../../../utils/sounds";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { ItemCard } from "./itemCard";
 
 export const ProjectCard = ({
@@ -70,6 +71,20 @@ export const ProjectCard = ({
   useEffect(() => {
     setIsExpanded(expanded ?? true);
   }, [expanded]);
+
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const measure = () => {
+    const el = textRef.current;
+    if (!el) return;
+    setIsTruncated(el.scrollWidth > el.clientWidth);
+  };
+  useEffect(() => {
+    measure();
+    const handle = () => measure();
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, [text]);
 
   // children query moved above
 
@@ -265,39 +280,69 @@ export const ProjectCard = ({
                 : "text-purple-600 focus:ring-purple-500"
             }`}
           />
-          <button
-            onClick={async () => {
-              const next = !isExpanded;
-              setIsExpanded(next);
-              try {
-                await setExpandedMutation({
-                  id: _id as Id<"toDoItems">,
-                  expanded: next,
-                });
-              } catch {}
-            }}
-            className="text-white text-sm mr-2 transition-colors"
-            title={isExpanded ? "Collapse project" : "Expand project"}
-          >
-            <svg
-              className={`w-4 h-4 mr-1 transition-transform duration-200 ${
-                isExpanded ? "rotate-90" : "rotate-0"
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                onClick={async () => {
+                  const next = !isExpanded;
+                  setIsExpanded(next);
+                  try {
+                    await setExpandedMutation({
+                      id: _id as Id<"toDoItems">,
+                      expanded: next,
+                    });
+                  } catch {}
+                }}
+                className="text-white text-sm mr-2 transition-colors"
+              >
+                <svg
+                  className={`w-4 h-4 mr-1 transition-transform duration-200 ${
+                    isExpanded ? "rotate-90" : "rotate-0"
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                side="left"
+                align="center"
+                sideOffset={12}
+                collisionPadding={8}
+                className="z-[9999] rounded-md bg-slate-900/95 text-white text-xs px-2 py-1 border border-slate-700 shadow-md whitespace-pre"
+              >
+                {isExpanded ? "Collapse project" : "Expand project"}
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+          <div className="relative group flex-1 min-w-0">
+            <span
+              ref={textRef}
+              className={`block truncate transition-colors duration-200 font-medium`}
+              onMouseEnter={measure}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-          <span className={`flex-1 transition-colors duration-200 font-medium`}>
-            {text}
-          </span>
+              {text}
+            </span>
+            {/* {isTruncated && (
+              <div className="absolute left-[-150px] bottom-full mb-1 z-[999] max-w-[40ch] break-words whitespace-normal px-2 py-1 rounded bg-slate-900/95 text-slate-200 text-xs border border-slate-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm">
+                {`Content: ${text}`}
+              </div>
+            )} */}
+          </div>
+          {isTruncated && (
+            <div className="absolute left-0 bottom-full mb-1 z-[999] w-fit max-w-full break-words whitespace-normal px-2 py-1 rounded bg-slate-900/95 text-slate-200 text-xs border border-slate-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm">
+              {`${text}`}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import App from "./App";
 
 const geistSans = Geist({
@@ -33,7 +34,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <App>{children}</App>
+        <Tooltip.Provider
+          delayDuration={150}
+          skipDelayDuration={150}
+          disableHoverableContent
+        >
+          <App>{children}</App>
+        </Tooltip.Provider>
       </body>
     </html>
   );
