@@ -32,6 +32,7 @@ interface ItemCardProps {
   // Whether the currently dragged item is a nested child (has parentId)
   draggedItemIsChild?: boolean;
   expanded?: boolean;
+  color?: string;
 }
 
 export const ItemCard = ({ type, ...props }: ItemCardProps) => {

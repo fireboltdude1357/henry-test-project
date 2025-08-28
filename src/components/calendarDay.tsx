@@ -35,6 +35,7 @@ function CompletedDayItem({
     text: string;
     completed: boolean;
     type?: ToDoItemType;
+    color?: string;
   };
   date: string;
   onDragOver: (id: string) => void;
@@ -85,14 +86,16 @@ function CompletedDayItem({
           {item?.type && (
             <div className="flex items-center gap-1 mt-1">
               <div
-                className={`w-2 h-2 rounded-full ${
-                  (item?.type as ToDoItemType) === "project"
-                    ? "bg-purple-500"
-                    : (item?.type as ToDoItemType) === "task"
-                      ? "bg-blue-500"
-                      : "bg-yellow-500"
-                }`}
-              ></div>
+                className="w-2 h-2 rounded-full"
+                style={{
+                  backgroundColor:
+                    (item?.type as ToDoItemType) === "project"
+                      ? item?.color || "#a855f7"
+                      : (item?.type as ToDoItemType) === "task"
+                        ? "#3b82f6"
+                        : "#eab308",
+                }}
+              />
               <span className="text-xs text-slate-400 capitalize">
                 {item?.type}
               </span>
@@ -234,13 +237,15 @@ function ProjectChildren({
             <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full" />
           )}
           <div
-            className={`w-2 h-2 rounded-full ${
-              (child.type as ToDoItemType) === "project"
-                ? "bg-purple-500"
-                : (child.type as ToDoItemType) === "task"
-                  ? "bg-blue-500"
-                  : "bg-yellow-500"
-            }`}
+            className="w-2 h-2 rounded-full"
+            style={{
+              backgroundColor:
+                (child.type as ToDoItemType) === "project"
+                  ? child.color || "#a855f7"
+                  : (child.type as ToDoItemType) === "task"
+                    ? "#3b82f6"
+                    : "#eab308",
+            }}
           />
           <input
             type="checkbox"
@@ -304,6 +309,7 @@ function ProjectDayItem({
     text: string;
     completed: boolean;
     type?: ToDoItemType;
+    color?: string;
   };
   date: string;
   onDragOver: (id: string) => void;
@@ -395,7 +401,7 @@ function ProjectDayItem({
         />
         <button
           onClick={() => setExpanded((v) => !v)}
-          className="text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
+          className="text-white text-sm mr-2 transition-colors"
           title={expanded ? "Collapse" : "Expand"}
         >
           <svg
@@ -422,7 +428,10 @@ function ProjectDayItem({
           </div>
           {item?.type && (
             <div className="flex items-center gap-1 mt-1">
-              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: item?.color || "#a855f7" }}
+              />
               <span className="text-xs text-slate-400 capitalize">Project</span>
             </div>
           )}
@@ -977,14 +986,16 @@ export default function CalendarDay({
                         {item?.type && (
                           <div className="flex items-center gap-1 mt-1">
                             <div
-                              className={`w-2 h-2 rounded-full ${
-                                (item?.type as ToDoItemType) === "project"
-                                  ? "bg-purple-500"
-                                  : (item?.type as ToDoItemType) === "task"
-                                    ? "bg-blue-500"
-                                    : "bg-yellow-500"
-                              }`}
-                            ></div>
+                              className="w-2 h-2 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  (item?.type as ToDoItemType) === "project"
+                                    ? item?.color || "#a855f7"
+                                    : (item?.type as ToDoItemType) === "task"
+                                      ? "#3b82f6"
+                                      : "#eab308",
+                              }}
+                            />
                             <span className="text-xs text-slate-400 capitalize">
                               {item?.type}
                             </span>

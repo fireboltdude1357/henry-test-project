@@ -56,6 +56,7 @@ export const CalendarItemDisplay = ({
                 type,
                 parentId,
                 expanded,
+                color,
               }) => {
                 // Only show highlight when dragging within the same layer:
                 // - If the dragged item has a parent, only highlight items with that same parent
@@ -104,6 +105,7 @@ export const CalendarItemDisplay = ({
                     showHighlight={showHighlight}
                     draggedItemIsChild={Boolean(dragged?.parentId)}
                     expanded={expanded}
+                    color={color}
                   />
                 );
               }
@@ -147,7 +149,7 @@ export const CalendarItemDisplay = ({
           </h3>
           <div className="space-y-3">
             {completedTasks.map(
-              ({ _id, text, completed, mainOrder, type, expanded }) => (
+              ({ _id, text, completed, mainOrder, type, expanded, color }) => (
                 <ItemCard
                   key={_id}
                   _id={_id}
@@ -172,6 +174,7 @@ export const CalendarItemDisplay = ({
                   childDraggedItemId={childDraggedItemId}
                   setChildDraggedItemId={setChildDraggedItemId}
                   expanded={expanded}
+                  color={color}
                 />
               )
             )}

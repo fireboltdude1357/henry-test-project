@@ -25,6 +25,7 @@ export const ProjectCard = ({
   setChildDraggedOverItemId,
   childDraggedOverItemId,
   expanded,
+  color,
 }: {
   _id: string;
   text: string;
@@ -45,6 +46,7 @@ export const ProjectCard = ({
   childDraggedOverItemId: string | null;
   childDraggedItemId: string | null;
   expanded?: boolean;
+  color?: string;
 }) => {
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
@@ -238,11 +240,15 @@ export const ProjectCard = ({
           e.stopPropagation();
           onDragEnd?.(_id);
         }}
-        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${
-          completed
-            ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
-            : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
-        }`}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative`}
+        style={
+          color
+            ? {
+                backgroundColor: `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, ${completed ? 0.12 : 0.18})`,
+                borderColor: `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.6)`,
+              }
+            : undefined
+        }
       >
         <div className="flex items-center gap-3">
           <input
@@ -270,7 +276,7 @@ export const ProjectCard = ({
                 });
               } catch {}
             }}
-            className="text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
+            className="text-white text-sm mr-2 transition-colors"
             title={isExpanded ? "Collapse project" : "Expand project"}
           >
             <svg
@@ -289,13 +295,7 @@ export const ProjectCard = ({
               />
             </svg>
           </button>
-          <span
-            className={`flex-1 transition-colors duration-200 font-medium ${
-              completed
-                ? "text-purple-400 line-through"
-                : "text-purple-100 group-hover:text-purple-50"
-            }`}
-          >
+          <span className={`flex-1 transition-colors duration-200 font-medium`}>
             {text}
           </span>
         </div>
@@ -335,6 +335,7 @@ export const ProjectCard = ({
               childDraggedOverItemId={childDraggedOverItemId}
               childDraggedItemId={null}
               expanded={child.expanded}
+              color={child.color}
             />
           ))}
         </div>
