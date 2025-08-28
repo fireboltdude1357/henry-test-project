@@ -121,77 +121,49 @@ export default function CalendarScreen({
           (item) => item._id === draggedOverItemId
         );
         if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
-          let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+          let movingItemNewOrder = draggedOverItem?.mainOrder ?? 0;
           const movingItemOldOrder =
-            draggedItem?.mainOrder || movingItemNewOrder;
+            draggedItem?.mainOrder ?? movingItemNewOrder;
           const difference = movingItemNewOrder - movingItemOldOrder;
-          let interval = 0;
-          if (difference > 0) {
-            interval = 1;
-            movingItemNewOrder = movingItemNewOrder - 1;
+          if (difference === 0) {
+            // Nothing to do
           } else {
-            // SIDEBAR CONTEXT: Use mainOrder logic (like home page)
-            console.log("Using sidebar mainOrder reordering logic");
-
-            if (!draggedOverItem.parentId) {
-              let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
-              const movingItemOldOrder =
-                draggedItem?.mainOrder || movingItemNewOrder;
-
-              const difference = movingItemNewOrder - movingItemOldOrder;
-              console.log("Main order difference:", difference);
-
-              let interval = 0;
-              if (difference > 0) {
-                interval = 1;
-                movingItemNewOrder = movingItemNewOrder - 1;
-              } else {
-                interval = -1;
-              }
-
-              console.log("Moving item new mainOrder:", movingItemNewOrder);
-              console.log("Moving item old mainOrder:", movingItemOldOrder);
-
-              // Reorder items between old and new positions using mainOrder
-              for (
-                let i = movingItemOldOrder + interval;
-                i !== movingItemNewOrder + interval;
-                i += interval
-              ) {
-                console.log("Updating mainOrder for item with order:", i);
-                const item = toDoItems?.find((item) => item.mainOrder === i);
-                if (item) {
-                  updateOrder({
-                    id: item._id as Id<"toDoItems">,
-                    order: (item.mainOrder || 0) - interval,
-                  });
-                }
-              }
-
-              // Update the dragged item's mainOrder
-              updateOrder({
-                id: draggedItemId as Id<"toDoItems">,
-                order: movingItemNewOrder,
-              });
+            const interval = difference > 0 ? 1 : -1;
+            if (difference > 0) {
+              movingItemNewOrder = movingItemNewOrder - 1;
             }
-          }
-          for (
-            let i = movingItemOldOrder + interval;
-            i !== movingItemNewOrder + interval;
-            i += interval
-          ) {
-            const item = toDoItems?.find((item) => item.mainOrder === i);
-            if (item) {
-              console.log(
-                `Shifting item "${item.text}" from mainOrder ${i} to ${i - 1}`
-              );
-              updateOrder({
-                id: item._id as Id<"toDoItems">,
-                order: (item.mainOrder || 0) - interval,
-              });
+            for (
+              let i = movingItemOldOrder + interval;
+              i !== movingItemNewOrder + interval;
+              i += interval
+            ) {
+              const item = toDoItems?.find((it) => it.mainOrder === i);
+              if (item) {
+                updateOrder({
+                  id: item._id as Id<"toDoItems">,
+                  order: (item.mainOrder || 0) - interval,
+                });
+              }
             }
+            updateOrder({
+              id: draggedItemId as Id<"toDoItems">,
+              order: movingItemNewOrder,
+            });
           }
         }
+      } else if (draggedItem && !draggedItem.parentId) {
+        // Append to bottom of top-level list
+        const topLevelActive = (toDoItems || [])
+          .filter((it) => it.parentId === undefined && !it.completed)
+          .map((it) => it.mainOrder)
+          .filter((n): n is number => typeof n === "number");
+        const maxMainOrder = topLevelActive.length
+          ? Math.max(...topLevelActive) + 1
+          : 1;
+        updateOrder({
+          id: draggedItemId as Id<"toDoItems">,
+          order: maxMainOrder,
+        });
       }
     }
     console.log("draggedItemId", draggedItemId);
