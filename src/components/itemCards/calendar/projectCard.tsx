@@ -2,7 +2,8 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { playCompletionPop } from "../../../utils/sounds";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { ItemCard } from "./itemCard";
 
 export const ProjectCard = ({
@@ -25,6 +26,7 @@ export const ProjectCard = ({
   setChildDraggedOverItemId,
   childDraggedOverItemId,
   expanded,
+  color,
 }: {
   _id: string;
   text: string;
@@ -45,6 +47,7 @@ export const ProjectCard = ({
   childDraggedOverItemId: string | null;
   childDraggedItemId: string | null;
   expanded?: boolean;
+  color?: string;
 }) => {
   const children = useQuery(api.projects.getByParentId, {
     parentId: _id as Id<"toDoItems">,
@@ -68,6 +71,20 @@ export const ProjectCard = ({
   useEffect(() => {
     setIsExpanded(expanded ?? true);
   }, [expanded]);
+
+  const textRef = useRef<HTMLSpanElement | null>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const measure = () => {
+    const el = textRef.current;
+    if (!el) return;
+    setIsTruncated(el.scrollWidth > el.clientWidth);
+  };
+  useEffect(() => {
+    measure();
+    const handle = () => measure();
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, [text]);
 
   // children query moved above
 
@@ -238,11 +255,15 @@ export const ProjectCard = ({
           e.stopPropagation();
           onDragEnd?.(_id);
         }}
-        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${
-          completed
-            ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
-            : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
-        }`}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative`}
+        style={
+          color
+            ? {
+                backgroundColor: `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, ${completed ? 0.12 : 0.18})`,
+                borderColor: `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.6)`,
+              }
+            : undefined
+        }
       >
         <div className="flex items-center gap-3">
           <input
@@ -259,45 +280,69 @@ export const ProjectCard = ({
                 : "text-purple-600 focus:ring-purple-500"
             }`}
           />
-          <button
-            onClick={async () => {
-              const next = !isExpanded;
-              setIsExpanded(next);
-              try {
-                await setExpandedMutation({
-                  id: _id as Id<"toDoItems">,
-                  expanded: next,
-                });
-              } catch {}
-            }}
-            className="text-purple-400 text-sm mr-2 hover:text-purple-300 transition-colors"
-            title={isExpanded ? "Collapse project" : "Expand project"}
-          >
-            <svg
-              className={`w-4 h-4 mr-1 transition-transform duration-200 ${
-                isExpanded ? "rotate-90" : "rotate-0"
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <button
+                onClick={async () => {
+                  const next = !isExpanded;
+                  setIsExpanded(next);
+                  try {
+                    await setExpandedMutation({
+                      id: _id as Id<"toDoItems">,
+                      expanded: next,
+                    });
+                  } catch {}
+                }}
+                className="text-white text-sm mr-2 transition-colors"
+              >
+                <svg
+                  className={`w-4 h-4 mr-1 transition-transform duration-200 ${
+                    isExpanded ? "rotate-90" : "rotate-0"
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                side="left"
+                align="center"
+                sideOffset={12}
+                collisionPadding={8}
+                className="z-[9999] rounded-md bg-slate-900/95 text-white text-xs px-2 py-1 border border-slate-700 shadow-md whitespace-pre"
+              >
+                {isExpanded ? "Collapse project" : "Expand project"}
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+          <div className="relative group flex-1 min-w-0">
+            <span
+              ref={textRef}
+              className={`block truncate transition-colors duration-200 font-medium`}
+              onMouseEnter={measure}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-          <span
-            className={`flex-1 transition-colors duration-200 font-medium ${
-              completed
-                ? "text-purple-400 line-through"
-                : "text-purple-100 group-hover:text-purple-50"
-            }`}
-          >
-            {text}
-          </span>
+              {text}
+            </span>
+            {/* {isTruncated && (
+              <div className="absolute left-[-150px] bottom-full mb-1 z-[999] max-w-[40ch] break-words whitespace-normal px-2 py-1 rounded bg-slate-900/95 text-slate-200 text-xs border border-slate-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm">
+                {`Content: ${text}`}
+              </div>
+            )} */}
+          </div>
+          {isTruncated && (
+            <div className="absolute left-0 bottom-full mb-1 z-[999] w-fit max-w-full break-words whitespace-normal px-2 py-1 rounded bg-slate-900/95 text-slate-200 text-xs border border-slate-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm">
+              {`${text}`}
+            </div>
+          )}
         </div>
       </div>
 
@@ -335,6 +380,7 @@ export const ProjectCard = ({
               childDraggedOverItemId={childDraggedOverItemId}
               childDraggedItemId={null}
               expanded={child.expanded}
+              color={child.color}
             />
           ))}
         </div>

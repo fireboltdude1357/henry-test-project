@@ -375,6 +375,7 @@ export const ProjectCard = ({
               setAdditionParentId={setAdditionParentId}
               type={child.type || "task"}
               expanded={child.expanded}
+              color={child.color}
             />
           ))}
           {/* Bottom drop zone for child items */}
@@ -413,6 +414,7 @@ export const ProjectCard = ({
               mainOrder={child.mainOrder ?? 0}
               type={child.type || "task"}
               expanded={child.expanded}
+              color={child.color}
             />
           ))}
         </div>

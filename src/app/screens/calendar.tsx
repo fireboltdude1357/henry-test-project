@@ -25,11 +25,7 @@ export default function CalendarScreen({
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
   const deleteItem = useMutation(api.toDoItems.deleteItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
-  const updateDayOrder = useMutation(api.toDoItems.updateDayOrder);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
-  const assignItemToDateAtPosition = useMutation(
-    api.toDoItems.assignItemToDateAtPosition
-  );
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [draggedOverItemId, setDraggedOverItemId] = useState<string | null>(
     null
@@ -58,11 +54,24 @@ export default function CalendarScreen({
   // Navigation functions
   const goToPreviousDays = () => {
     const newStartDate = new Date(startDate);
-    newStartDate.setDate(startDate.getDate() - numDays);
+    newStartDate.setDate(startDate.getDate() - 1);
     setStartDate(newStartDate);
   };
 
   const goToNextDays = () => {
+    const newStartDate = new Date(startDate);
+    newStartDate.setDate(startDate.getDate() + 1);
+    setStartDate(newStartDate);
+  };
+
+  // Jump by the current view size (numDays)
+  const goBackManyDays = () => {
+    const newStartDate = new Date(startDate);
+    newStartDate.setDate(startDate.getDate() - numDays);
+    setStartDate(newStartDate);
+  };
+
+  const goForwardManyDays = () => {
     const newStartDate = new Date(startDate);
     newStartDate.setDate(startDate.getDate() + numDays);
     setStartDate(newStartDate);
@@ -94,7 +103,7 @@ export default function CalendarScreen({
     setDraggedItemId(id);
   };
 
-  const handleDragEnd = async (id: string) => {
+  const handleDragEnd = async () => {
     if (draggedOverItemId && draggedItemId) {
       const draggedItem = toDoItems?.find((item) => item._id === draggedItemId);
       const isDateContainer = /^\d{4}-\d{2}-\d{2}$/.test(draggedOverItemId);
@@ -112,77 +121,49 @@ export default function CalendarScreen({
           (item) => item._id === draggedOverItemId
         );
         if (draggedItem && draggedOverItem && !draggedOverItem.parentId) {
-          let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
+          let movingItemNewOrder = draggedOverItem?.mainOrder ?? 0;
           const movingItemOldOrder =
-            draggedItem?.mainOrder || movingItemNewOrder;
+            draggedItem?.mainOrder ?? movingItemNewOrder;
           const difference = movingItemNewOrder - movingItemOldOrder;
-          let interval = 0;
-          if (difference > 0) {
-            interval = 1;
-            movingItemNewOrder = movingItemNewOrder - 1;
+          if (difference === 0) {
+            // Nothing to do
           } else {
-            // SIDEBAR CONTEXT: Use mainOrder logic (like home page)
-            console.log("Using sidebar mainOrder reordering logic");
-
-            if (!draggedOverItem.parentId) {
-              let movingItemNewOrder = draggedOverItem?.mainOrder || 0;
-              const movingItemOldOrder =
-                draggedItem?.mainOrder || movingItemNewOrder;
-
-              const difference = movingItemNewOrder - movingItemOldOrder;
-              console.log("Main order difference:", difference);
-
-              let interval = 0;
-              if (difference > 0) {
-                interval = 1;
-                movingItemNewOrder = movingItemNewOrder - 1;
-              } else {
-                interval = -1;
-              }
-
-              console.log("Moving item new mainOrder:", movingItemNewOrder);
-              console.log("Moving item old mainOrder:", movingItemOldOrder);
-
-              // Reorder items between old and new positions using mainOrder
-              for (
-                let i = movingItemOldOrder + interval;
-                i !== movingItemNewOrder + interval;
-                i += interval
-              ) {
-                console.log("Updating mainOrder for item with order:", i);
-                const item = toDoItems?.find((item) => item.mainOrder === i);
-                if (item) {
-                  updateOrder({
-                    id: item._id as Id<"toDoItems">,
-                    order: (item.mainOrder || 0) - interval,
-                  });
-                }
-              }
-
-              // Update the dragged item's mainOrder
-              updateOrder({
-                id: draggedItemId as Id<"toDoItems">,
-                order: movingItemNewOrder,
-              });
+            const interval = difference > 0 ? 1 : -1;
+            if (difference > 0) {
+              movingItemNewOrder = movingItemNewOrder - 1;
             }
-          }
-          for (
-            let i = movingItemOldOrder + interval;
-            i !== movingItemNewOrder + interval;
-            i += interval
-          ) {
-            const item = toDoItems?.find((item) => item.mainOrder === i);
-            if (item) {
-              console.log(
-                `Shifting item "${item.text}" from mainOrder ${i} to ${i - 1}`
-              );
-              updateOrder({
-                id: item._id as Id<"toDoItems">,
-                order: (item.mainOrder || 0) - interval,
-              });
+            for (
+              let i = movingItemOldOrder + interval;
+              i !== movingItemNewOrder + interval;
+              i += interval
+            ) {
+              const item = toDoItems?.find((it) => it.mainOrder === i);
+              if (item) {
+                updateOrder({
+                  id: item._id as Id<"toDoItems">,
+                  order: (item.mainOrder || 0) - interval,
+                });
+              }
             }
+            updateOrder({
+              id: draggedItemId as Id<"toDoItems">,
+              order: movingItemNewOrder,
+            });
           }
         }
+      } else if (draggedItem && !draggedItem.parentId) {
+        // Append to bottom of top-level list
+        const topLevelActive = (toDoItems || [])
+          .filter((it) => it.parentId === undefined && !it.completed)
+          .map((it) => it.mainOrder)
+          .filter((n): n is number => typeof n === "number");
+        const maxMainOrder = topLevelActive.length
+          ? Math.max(...topLevelActive) + 1
+          : 1;
+        updateOrder({
+          id: draggedItemId as Id<"toDoItems">,
+          order: maxMainOrder,
+        });
       }
     }
     console.log("draggedItemId", draggedItemId);
@@ -242,7 +223,10 @@ export default function CalendarScreen({
         <div className="w-full">
           <div className="grid grid-cols-[380px_1fr] gap-0 min-h-screen items-stretch">
             {/* Left Side - Flush Task List, full height */}
-            <div className="bg-[var(--surface-1)]/60 backdrop-blur-xl border-r border-[var(--border)] rounded-none min-h-screen sticky top-0">
+            <div
+              className="bg-[var(--surface-1)]/60 backdrop-blur-xl border-r border-[var(--border)] rounded-none min-h-screen sticky"
+              style={{ top: "var(--app-header-h)" }}
+            >
               <div className="h-full flex flex-col">
                 <div className="px-4 py-5 flex-1 overflow-auto">
                   <CalendarItemDisplay
@@ -269,11 +253,52 @@ export default function CalendarScreen({
             </div>
 
             {/* Right Side - Main Calendar Area */}
-            <div className="space-y-6 px-6 pt-10">
+            <div
+              className="space-y-6 px-6 pt-10 sticky overflow-auto"
+              style={{
+                top: "var(--app-header-h)",
+                maxHeight: "calc(100vh - var(--app-header-h))",
+              }}
+            >
               {/* Local controls now live here */}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between bg-[var(--surface-1)]/60 rounded-xl p-4 border border-[var(--border)] backdrop-blur-xl">
+              <div
+                className="flex items-center justify-between bg-[var(--surface-1)]/60 rounded-xl p-4 border border-[var(--border)] backdrop-blur-xl sticky z-30"
+                style={{ top: 0, height: "var(--calendar-controls-h)" }}
+              >
+                <button
+                  onClick={goBackManyDays}
+                  className="flex items-center gap-0 bg-slate-800/60 hover:bg-slate-700 text-white px-3 py-2 rounded-lg transition-colors border border-[var(--border)]"
+                  title={`Back ${numDays} day${numDays > 1 ? "s" : ""}`}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  <svg
+                    className="w-4 h-4 -ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
                 <button
                   onClick={goToPreviousDays}
                   className="flex items-center gap-2 bg-slate-800/60 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-[var(--border)]"
@@ -291,8 +316,8 @@ export default function CalendarScreen({
                       d="M15 19l-7-7 7-7"
                     />
                   </svg>
-                  Previous {numDays} day{numDays > 1 ? "s" : ""}
                 </button>
+
                 <div className="flex items-center gap-3 bg-[var(--surface-1)]/60 rounded-lg px-4 py-2 border border-[var(--border)]">
                   <span className="text-slate-300 text-sm font-medium">
                     View:
@@ -334,9 +359,40 @@ export default function CalendarScreen({
                   onClick={goToNextDays}
                   className="flex items-center gap-2 bg-slate-800/60 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors border border-[var(--border)]"
                 >
-                  Next {numDays} day{numDays > 1 ? "s" : ""}
                   <svg
                     className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={goForwardManyDays}
+                  className="flex items-center gap-0 bg-slate-800/60 hover:bg-slate-700 text-white px-3 py-2 rounded-lg transition-colors border border-[var(--border)]"
+                  title={`Forward ${numDays} day${numDays > 1 ? "s" : ""}`}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  <svg
+                    className="w-4 h-4 -ml-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
