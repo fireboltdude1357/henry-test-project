@@ -1,5 +1,6 @@
 import { ItemCard } from "../itemCards/calendar/itemCard";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
+import { useState } from "react";
 
 export const CalendarItemDisplay = ({
   activeTasks,
@@ -38,18 +39,48 @@ export const CalendarItemDisplay = ({
   childDraggedItemId: string | null;
   setChildDraggedItemId: (id: string | null) => void;
 }) => {
+  const [tab, setTab] = useState<"active" | "completed">("active");
+  const activeCount = activeTasks.length;
+  const completedCount = completedTasks.length;
+
   return (
-    <div className="space-y-8 ">
-      {/* Active Tasks */}
-      {activeTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">
-            Active Tasks ({activeTasks.length})
-          </h3>
-          <div
-            className="space-y-3 overflow-auto pr-2"
-            style={{ maxHeight: "40vh" }}
+    <div className="bg-[var(--surface-1)]/60 rounded-xl border border-[var(--border)] backdrop-blur-xl flex flex-col h-[calc(100vh-160px)] min-h-0">
+      {/* Tabs */}
+      <div className="px-4 pt-3">
+        <div className="flex items-end gap-2 border-b border-[var(--border)]/70">
+          <button
+            onClick={() => setTab("active")}
+            className={`px-3 py-1.5 rounded-t-lg border text-sm font-medium transition-colors ${
+              tab === "active"
+                ? "bg-slate-800 text-white border-slate-600 border-b-transparent"
+                : "bg-slate-700/40 text-slate-300 border-slate-600/60 hover:bg-slate-700/60"
+            }`}
           >
+            Active
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-600/60 text-slate-200 border border-slate-500/60">
+              {activeCount}
+            </span>
+          </button>
+          <button
+            onClick={() => setTab("completed")}
+            className={`px-3 py-1.5 rounded-t-lg border text-sm font-medium transition-colors ${
+              tab === "completed"
+                ? "bg-slate-800 text-white border-slate-600 border-b-transparent"
+                : "bg-slate-700/40 text-slate-300 border-slate-600/60 hover:bg-slate-700/60"
+            }`}
+          >
+            Completed
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-600/60 text-slate-200 border border-slate-500/60">
+              {completedCount}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4">
+        {tab === "active" ? (
+          <div className="space-y-3 pr-2">
             {activeTasks.map(
               ({
                 _id,
@@ -141,16 +172,8 @@ export const CalendarItemDisplay = ({
               );
             })()}
           </div>
-        </div>
-      )}
-
-      {/* Completed Tasks */}
-      {completedTasks.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-slate-300">
-            Completed Tasks ({completedTasks.length})
-          </h3>
-          <div className="space-y-3">
+        ) : (
+          <div className="space-y-3 pr-2">
             {completedTasks.map(
               ({ _id, text, completed, mainOrder, type, expanded, color }) => (
                 <ItemCard
@@ -182,8 +205,8 @@ export const CalendarItemDisplay = ({
               )
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Empty State */}
       {(!toDoItems || toDoItems.length === 0) && (
