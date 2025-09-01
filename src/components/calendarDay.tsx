@@ -48,8 +48,8 @@ function CompletedDayItem({
 }) {
   const dayIndex = calendarDay?.items
     ? calendarDay.items.findIndex(
-        (tid) => tid === (item?._id as unknown as Id<"toDoItems">)
-      )
+      (tid) => tid === (item?._id as unknown as Id<"toDoItems">)
+    )
     : -1;
   return (
     <div
@@ -64,7 +64,7 @@ function CompletedDayItem({
         onDrop(date + String(item?._id));
       }}
     >
-      <div className="flex items-start gap-3 select-none">
+      <div className="flex items-start gap-3 select-none group">
         <input
           type="checkbox"
           checked={item?.completed}
@@ -128,24 +128,24 @@ function CompletedDayItem({
           </div>
         )}
         <button
-            //onClick={handleDelete}
-            className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-            title="Delete project"
+          //onClick={handleDelete}
+          className="opacity-100 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+          title="Delete project"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
       </div>
     </div>
   );
@@ -416,11 +416,10 @@ function ProjectDayItem({
   void dragFromNested; // reference to avoid unused warning in this scope
   return (
     <div
-      className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
-        item?.completed
-          ? "border-green-500/30 bg-green-500/5"
-          : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
-      }`}
+      className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${item?.completed
+        ? "border-green-500/30 bg-green-500/5"
+        : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
+        }`}
       onDragOver={(e) => {
         e.preventDefault();
         // Suppress project-level hover when dragging from inside this project's nested list
@@ -486,9 +485,8 @@ function ProjectDayItem({
               className="text-white text-sm mr-2 transition-colors"
             >
               <svg
-                className={`w-4 h-4 mr-1 transition-transform duration-200 ${
-                  expanded ? "rotate-90" : "rotate-0"
-                }`}
+                className={`w-4 h-4 mr-1 transition-transform duration-200 ${expanded ? "rotate-90" : "rotate-0"
+                  }`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -548,7 +546,7 @@ function ProjectDayItem({
           setDraggedItemId={setDraggedItemId}
           childDraggedOverItemId={localChildDraggedOverId}
           setChildDraggedOverItemId={setLocalChildDraggedOverId}
-          setChildDraggedItemId={() => {}}
+          setChildDraggedItemId={() => { }}
           showNestedHighlights={showNestedHighlights}
           setDragFromNested={setDragFromNested}
           clearDayHover={clearDayHover}
@@ -890,8 +888,8 @@ export default function CalendarDay({
           e.stopPropagation();
           const token =
             draggedOverItemId &&
-            draggedOverItemId.startsWith(date) &&
-            draggedOverItemId.length > 10
+              draggedOverItemId.startsWith(date) &&
+              draggedOverItemId.length > 10
               ? draggedOverItemId
               : date;
           console.log("Dropping on day container:", {
@@ -909,15 +907,14 @@ export default function CalendarDay({
           e.stopPropagation();
           handleDragLeave(date);
         }}
-        className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg flex flex-col min-h-0 overflow-hidden ${
-          draggedOverItemId === date ||
+        className={`bg-slate-800/40 backdrop-blur-sm rounded-xl border-2 transition-all duration-200 hover:shadow-lg flex flex-col min-h-0 overflow-hidden ${draggedOverItemId === date ||
           draggedOverItemId === `${date}-bottom` ||
           draggedOverItemId === `${date}-top`
-            ? "border-green-500 bg-green-500/10 shadow-green-500/20"
-            : isToday
-              ? "border-blue-500 shadow-blue-500/20"
-              : "border-slate-700/50 hover:border-slate-600"
-        }`}
+          ? "border-green-500 bg-green-500/10 shadow-green-500/20"
+          : isToday
+            ? "border-blue-500 shadow-blue-500/20"
+            : "border-slate-700/50 hover:border-slate-600"
+          }`}
         style={{ height: "75vh" }}
       >
         {/* Day Header */}
@@ -936,9 +933,8 @@ export default function CalendarDay({
         >
           <div className="flex items-center justify-between mb-2">
             <div
-              className={`text-xl font-bold ${
-                isToday ? "text-blue-400" : "text-white"
-              }`}
+              className={`text-xl font-bold ${isToday ? "text-blue-400" : "text-white"
+                }`}
             >
               {formatDateForDisplay(new Date(date))}
             </div>
@@ -1024,11 +1020,10 @@ export default function CalendarDay({
                 ) : (
                   <div
                     key={date + item?._id}
-                    className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${
-                      item?.completed
-                        ? "border-green-500/30 bg-green-500/5"
-                        : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
-                    }`}
+                    className={`relative bg-slate-700/50 rounded-lg p-3 border transition-all duration-200 ${item?.completed
+                      ? "border-green-500/30 bg-green-500/5"
+                      : "border-slate-600/50 hover:border-slate-500 hover:bg-slate-700/70"
+                      }`}
                     draggable
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -1055,7 +1050,7 @@ export default function CalendarDay({
                       e.stopPropagation();
                     }}
                   >
-                    <div className="flex items-start gap-3 select-none cursor-grab active:cursor-grabbing">
+                    <div className="flex items-start gap-3 select-none cursor-grab active:cursor-grabbing group">
                       {draggedOverItemId === date + String(item?._id) && (
                         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
                       )}
@@ -1075,39 +1070,38 @@ export default function CalendarDay({
                       />
                       {calendarDay?.items
                         ? (() => {
-                            const idx = calendarDay.items.findIndex(
-                              (tid) =>
-                                tid ===
-                                (item?._id as unknown as Id<"toDoItems">)
-                            );
-                            return idx >= 0 ? (
-                              <span className="mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded bg-slate-600/60 text-[10px] font-mono text-slate-200 border border-slate-500/60">
-                                {idx + 1}
-                              </span>
-                            ) : null;
-                          })()
+                          const idx = calendarDay.items.findIndex(
+                            (tid) =>
+                              tid ===
+                              (item?._id as unknown as Id<"toDoItems">)
+                          );
+                          return idx >= 0 ? (
+                            <span className="mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded bg-slate-600/60 text-[10px] font-mono text-slate-200 border border-slate-500/60">
+                              {idx + 1}
+                            </span>
+                          ) : null;
+                        })()
                         : null}
                       <div className="flex-1 min-w-0">
                         <div
-                          className={`text-sm font-medium whitespace-normal break-words ${
-                            item?.completed
-                              ? "line-through text-slate-400"
-                              : "text-white"
-                          }`}
+                          className={`text-sm font-medium whitespace-normal break-words ${item?.completed
+                            ? "line-through text-slate-400"
+                            : "text-white"
+                            }`}
                         >
                           {item?.text}
                         </div>
                         {item?.parentId && toDoItems
                           ? (() => {
-                              const parent = toDoItems.find(
-                                (i) => i._id === item.parentId
-                              );
-                              return parent ? (
-                                <div className="text-[11px] text-slate-400 mt-0.5">
-                                  in {parent.text}
-                                </div>
-                              ) : null;
-                            })()
+                            const parent = toDoItems.find(
+                              (i) => i._id === item.parentId
+                            );
+                            return parent ? (
+                              <div className="text-[11px] text-slate-400 mt-0.5">
+                                in {parent.text}
+                              </div>
+                            ) : null;
+                          })()
                           : null}
                         {item?.type && (
                           <div className="flex items-center gap-1 mt-1">
@@ -1128,6 +1122,30 @@ export default function CalendarDay({
                           </div>
                         )}
                       </div>
+                      <button
+                        //onClick={handleDelete}
+
+                        //change this so that grey does not conflict with background color
+                        className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-grey-400/10 hover:bg-grey-400/20 text-grey-300 hover:text-grey-200 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                        title="Delete project"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+
+
+
                     </div>
                   </div>
                 )
