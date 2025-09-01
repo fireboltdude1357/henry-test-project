@@ -9,6 +9,7 @@ export const TaskCard = ({
   completed,
   toggleComplete,
   deleteItem,
+  removeItem, //Remove if Bad
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -26,6 +27,7 @@ export const TaskCard = ({
   completed: boolean;
   toggleComplete: (id: string) => void;
   deleteItem: (id: string) => void;
+  removeItem: (id: string) => void; // Remove if Bad
   onDragStart?: (id: string) => void;
   onDragEnd?: (id: string) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;

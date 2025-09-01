@@ -13,6 +13,7 @@ export const ProjectCard = ({
   toggleComplete,
   // deleteItem is intentionally unused in this view
   deleteItem: _unusedDelete, // eslint-disable-line @typescript-eslint/no-unused-vars
+  removeItem, //Remove if Bad
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -33,6 +34,7 @@ export const ProjectCard = ({
   completed: boolean;
   toggleComplete: (id: string) => void;
   deleteItem: (id: string) => void;
+  removeItem: (id: string) => void; // Remove if Bad
   onDragStart?: (id: string) => void;
   onDragEnd?: (id: string) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;
