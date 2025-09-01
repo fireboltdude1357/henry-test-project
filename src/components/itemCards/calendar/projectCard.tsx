@@ -255,7 +255,13 @@ export const ProjectCard = ({
           e.stopPropagation();
           onDragEnd?.(_id);
         }}
-        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative`}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${
+          color
+            ? ""
+            : completed
+              ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
+              : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
+        }`}
         style={
           color
             ? {
