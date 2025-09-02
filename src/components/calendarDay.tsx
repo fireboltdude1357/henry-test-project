@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRef, useState, useEffect } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
+import { deleteItem } from "../../convex/calendarDays";
 
 // Reusable pop sound for completion. Safe-guarded for SSR.
 let popAudio: HTMLAudioElement | null = null;
@@ -600,7 +601,10 @@ export default function CalendarDay({
     isAuthenticated ? {} : undefined
   );
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
-  // const deleteItem = useMutation(api.toDoItems.deleteItem);
+
+  const removeItem = useMutation(api.calendarDays.deleteItem);
+
+
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
   // const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -1127,9 +1131,8 @@ export default function CalendarDay({
                         )}
                       </div>
                       <button
-                        //onClick={handleDelete}
-
-                        //change this so that grey does not conflict with background color
+                        // onClick={() => removeItem({ dayId: calendarDay._id, itemId: item._id })}
+                        onClick={() => removeItem({ id: item._id })}
                         className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/20 text-slate-200 hover:text-grey-200 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                         title="Remove Task"
                       >
