@@ -339,6 +339,53 @@ export const deleteItem = mutation({
   },
 });
 
+//Same as deleteItem but is only used for calendarDay and removes task only from calendarDay
+export const removeCalendarItem = mutation({
+  args: {
+    id: v.id("toDoItems"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    // Get the item being deleted to know its order
+    const itemToDelete = await ctx.db.get(args.id);
+    if (itemToDelete === null) {
+      throw new Error("To-do item not found");
+    }
+    if (itemToDelete.userId !== userId._id) {
+      throw new Error("To-do item does not belong to user");
+    }
+
+    const deletedOrder = itemToDelete.mainOrder;
+
+    // If the item is assigned to a day, remove it from that day's list first
+    if (itemToDelete.assignedDate) {
+      const day = await ctx.db
+        .query("calendarDays")
+        .withIndex("by_user_and_date", (q) =>
+          q.eq("userId", userId._id).eq("date", itemToDelete.assignedDate!)
+        )
+        .unique();
+      if (day) {
+        await ctx.db.patch(day._id, {
+          items: day.items.filter((tid) => tid !== args.id),
+        });
+      }
+    }
+  },
+});
+
 export const deleteProject = mutation({
   args: {
     id: v.id("toDoItems"),
