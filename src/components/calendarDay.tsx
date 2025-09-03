@@ -1124,9 +1124,6 @@ export default function CalendarDay({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
                         </svg>
                       </button>
-
-
-
                     </div>
                   </div>
                 )

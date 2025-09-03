@@ -52,12 +52,12 @@ export const TaskCard = ({
       onDragLeave={() => {
         onDragLeave?.(_id);
       }}
-      className={`backdrop-blur-sm rounded-lg p-3 sm:p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
-        completed
-          ? "bg-slate-800/20 border-slate-700/20 opacity-75 hover:opacity-100"
-          : "bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50"
-      }`}
+      className={`backdrop-blur-sm rounded-lg p-3 sm:p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${completed
+        ? "bg-slate-800/20 border-slate-700/20 opacity-75 hover:opacity-100"
+        : "bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50"
+        }`}
     >
+      
       <div className="flex items-center gap-2 sm:gap-3">
         <input
           type="checkbox"
@@ -67,43 +67,32 @@ export const TaskCard = ({
             await toggleComplete(_id);
             if (!wasCompleted) playCompletionPop();
           }}
-          className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
-            completed
-              ? "text-green-600 focus:ring-green-500"
-              : "text-blue-600 focus:ring-blue-500"
-          }`}
+          className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${completed
+            ? "text-green-600 focus:ring-green-500"
+            : "text-blue-600 focus:ring-blue-500"
+            }`}
         />
         <span
-          className={`flex-1 transition-colors duration-200 ${
-            completed
-              ? "text-slate-400 line-through"
-              : "text-white group-hover:text-blue-100"
-          }`}
+          className={`flex-1 transition-colors duration-200 ${completed
+            ? "text-slate-400 line-through"
+            : "text-white group-hover:text-blue-100"
+            }`}
         >
           <span className="text-sm sm:text-base">{text}</span>
         </span>
+        {/* Time Estimate Menu Button */}
+        <button
+          onClick={() => deleteItem(_id)}
+          className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/20 text-slate-200 hover:text-grey-200 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-500/50"
+          title="Time Estimate"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 sm:w-4 sm:h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+        </button>
         <span className="text-slate-400 text-[10px] sm:text-xs">
           ({mainOrder})
         </span>
-        <button
-          onClick={() => deleteItem(_id)}
-          className="opacity-0 group-hover:opacity-100 p-1.5 sm:p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-          title="Delete task"
-        >
-          <svg
-            className="w-3.5 h-3.5 sm:w-4 sm:h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </button>
         <button
           onClick={() => deleteItem(_id)}
           className="opacity-0 group-hover:opacity-100 p-1.5 sm:p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
