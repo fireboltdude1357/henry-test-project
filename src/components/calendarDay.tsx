@@ -4,7 +4,6 @@ import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { useRef, useState, useEffect } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { deleteItem } from "../../convex/calendarDays";
 
 // Reusable pop sound for completion. Safe-guarded for SSR.
 let popAudio: HTMLAudioElement | null = null;
@@ -47,6 +46,7 @@ function CompletedDayItem({
   toggleComplete: (id: Id<"toDoItems">) => void;
   parentTitle?: string;
 }) {
+  const removeCalendarItem = useMutation(api.toDoItems.removeCalendarItem);
   const dayIndex = calendarDay?.items
     ? calendarDay.items.findIndex(
       (tid) => tid === (item?._id as unknown as Id<"toDoItems">)
@@ -128,28 +128,15 @@ function CompletedDayItem({
             </span>
           </div>
         )}
+        {/*remove from calendar button*/}
         <button
-          //onClick={handleDelete}
+          onClick={() => removeCalendarItem({ id: item._id as Id<"toDoItems"> })}
           className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/20 text-slate-200 hover:text-grey-200 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
           title="Remove Task"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-3 h-3">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
           </svg>
-
-          {/* <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg> */}
         </button>
       </div>
     </div>
@@ -601,10 +588,7 @@ export default function CalendarDay({
     isAuthenticated ? {} : undefined
   );
   const toggleComplete = useMutation(api.toDoItems.toggleComplete);
-
-  const removeItem = useMutation(api.calendarDays.deleteItem);
-
-
+  const removeCalendarItem = useMutation(api.toDoItems.removeCalendarItem);
   const updateOrder = useMutation(api.toDoItems.updateOrder);
   const assignItemToDate = useMutation(api.toDoItems.assignItemToDate);
   // const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -1130,9 +1114,9 @@ export default function CalendarDay({
                           </div>
                         )}
                       </div>
+                      {/* remove button*/}
                       <button
-                        // onClick={() => removeItem({ dayId: calendarDay._id, itemId: item._id })}
-                        onClick={() => removeItem({ id: item._id })}
+                        onClick={() => removeCalendarItem({ id: item._id })}
                         className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/20 text-slate-200 hover:text-grey-200 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                         title="Remove Task"
                       >
