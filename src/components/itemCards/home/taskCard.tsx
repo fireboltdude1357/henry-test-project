@@ -7,6 +7,7 @@ export const TaskCard = ({
   completed,
   toggleComplete,
   deleteItem,
+  openTimeMenu,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -14,12 +15,14 @@ export const TaskCard = ({
   onDragLeave,
   draggedOverItemId,
   mainOrder,
+
 }: {
   _id: string;
   text: string;
   completed: boolean;
   toggleComplete: (id: string) => void;
   deleteItem: (id: string) => void;
+  openTimeMenu: (id: string) => void;
   onDragStart?: (id: string) => void;
   onDragEnd?: (id: string) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;
@@ -28,6 +31,7 @@ export const TaskCard = ({
   draggedOverItemId?: string | null;
   mainOrder: number;
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
+
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
   const isDraggedOver = draggedOverItemId === _id;
@@ -57,7 +61,7 @@ export const TaskCard = ({
         : "bg-slate-800/30 border-slate-700/30 hover:border-slate-600/50"
         }`}
     >
-      
+
       <div className="flex items-center gap-2 sm:gap-3">
         <input
           type="checkbox"
@@ -82,7 +86,7 @@ export const TaskCard = ({
         </span>
         {/* Time Estimate Menu Button */}
         <button
-          onClick={() => deleteItem(_id)}
+          onClick={() => openTimeMenu(_id)}
           className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-slate-600/60 hover:bg-slate-500/20 text-slate-200 hover:text-grey-200 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-500/50"
           title="Time Estimate"
         >
@@ -117,5 +121,6 @@ export const TaskCard = ({
         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
       )}
     </div>
+    
   );
 };
