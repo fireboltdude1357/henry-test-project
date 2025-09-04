@@ -1,5 +1,6 @@
 import { ItemCard } from "../itemCards/home/itemCard";
 import { Id, Doc } from "../../../convex/_generated/dataModel";
+import { TaskCard } from "../itemCards/home/taskCard";
 
 export const HomeDisplay = ({
   activeTasks,
@@ -14,6 +15,7 @@ export const HomeDisplay = ({
   toggleComplete,
   deleteItem,
   toDoItems,
+  // openTimeMenu,
 }: {
   activeTasks: Doc<"toDoItems">[];
   completedTasks: Doc<"toDoItems">[];
@@ -27,6 +29,7 @@ export const HomeDisplay = ({
   toggleComplete: (id: Id<"toDoItems">) => void;
   deleteItem: (id: Id<"toDoItems">) => void;
   toDoItems: Doc<"toDoItems">[];
+  // openTimeMenu: (id: string) => void;
 }) => {
   return (
     <div className="space-y-8">
@@ -129,6 +132,13 @@ export const HomeDisplay = ({
           </p>
         </div>
       )}
+      {/* Time Estimate menu*/}
+      <div className="fixed inset-0 inset-z-50 flex item-center justify-center bg-black/20 backdrop-blur">
+        <div className="bg-white rounded-xl p-8 shadow-xl">
+
+        </div>
+      </div>
+
     </div>
   );
 };
