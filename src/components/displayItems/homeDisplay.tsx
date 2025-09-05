@@ -1,5 +1,8 @@
 import { ItemCard } from "../itemCards/home/itemCard";
 import { Id, Doc } from "../../../convex/_generated/dataModel";
+import { TaskCard } from "../itemCards/home/taskCard";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import { useState } from "react";
 
 export const HomeDisplay = ({
   activeTasks,
@@ -14,6 +17,7 @@ export const HomeDisplay = ({
   toggleComplete,
   deleteItem,
   toDoItems,
+  openTimeMenu,
 }: {
   activeTasks: Doc<"toDoItems">[];
   completedTasks: Doc<"toDoItems">[];
@@ -27,7 +31,12 @@ export const HomeDisplay = ({
   toggleComplete: (id: Id<"toDoItems">) => void;
   deleteItem: (id: Id<"toDoItems">) => void;
   toDoItems: Doc<"toDoItems">[];
+  openTimeMenu: (id: string) => void;
+
 }) => {
+  const [timeMenuTaskId, setTimeMenuTaskId] = useState<string | null>(null);
+  const openTimeMenuLocal = (id: string) => setTimeMenuTaskId(id);
+  const closeTimeMenuLocal = () => setTimeMenuTaskId(null);
   return (
     <div className="space-y-8">
       {/* Active Tasks */}
@@ -48,6 +57,7 @@ export const HomeDisplay = ({
                     await toggleComplete(_id as Id<"toDoItems">);
                   }}
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
+                  openTimeMenu={openTimeMenuLocal}
                   onDragStart={() => handleDragStart(_id)}
                   onDragEnd={() => handleDragEnd(_id)}
                   onDragOver={(id, e) => handleDragOver(id, e)}
@@ -99,6 +109,7 @@ export const HomeDisplay = ({
                     await toggleComplete(_id as Id<"toDoItems">);
                   }}
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
+                  openTimeMenu={() => openTimeMenu(_id)}
                   onDragStart={() => handleDragStart(_id)}
                   onDragEnd={() => handleDragEnd(_id)}
                   onDragOver={(id, e) => handleDragOver(id, e)}
@@ -129,6 +140,44 @@ export const HomeDisplay = ({
           </p>
         </div>
       )}
-    </div>
+      {/* Time Estimate menu -- Opens when timeMenuTaskId is NOT null*/}
+      {timeMenuTaskId && (
+        <div className="fixed inset-0 inset-z-50 flex items-center justify-center bg-black/20 backdrop-blur">
+          <div className="relative flex items-center justify-center w-[400px] h-[300px] max-w-full bg-slate-800/80 rounded-xl p-8 shadow-xl border border-slate-700/50">
+
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  onClick={closeTimeMenuLocal}
+                  className="absolute top-4 right-4 opacity-100 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                  title="Close"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </Tooltip.Trigger>
+            </Tooltip.Root>
+            <>
+              <label
+                htmlFor="minmax-range"
+                className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+              >
+                Time Estimate
+              </label>
+              <input
+                id="minmax-range"
+                type="range"
+                min={0}
+                max={10}
+                defaultValue={0}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+              />
+            </>
+
+          </div>
+        </div>
+      )}
+    </div >
   );
 };

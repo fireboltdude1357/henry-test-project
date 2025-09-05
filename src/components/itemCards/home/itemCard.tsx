@@ -8,6 +8,7 @@ interface ItemCardProps {
   completed: boolean;
   toggleComplete: (id: string) => void;
   deleteItem: (id: string) => void;
+  openTimeMenu: (id: string) => void;
   onDragStart?: (id: string) => void;
   onDragEnd?: (id: string) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;
