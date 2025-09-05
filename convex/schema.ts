@@ -32,6 +32,7 @@ const applicationTables = {
     assignedDate: v.optional(v.string()),
     expanded: v.optional(v.boolean()),
     color: v.optional(v.string()),
+    timeEstimate: v.optional(v.number()),
   })
     .index("by_user_and_order", ["userId", "mainOrder"])
     .index("by_user_type_and_order", ["userId", "type", "mainOrder"])

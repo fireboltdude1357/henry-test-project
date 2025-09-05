@@ -63,7 +63,7 @@ export const HomeDisplay = ({
                   completed={completed}
                   toggleComplete={async () => {
                     await toggleComplete(_id as Id<"toDoItems">);
-                  }}
+                  } }
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                   openTimeMenu={openTimeMenuLocal}
                   onDragStart={() => handleDragStart(_id)}
@@ -76,8 +76,10 @@ export const HomeDisplay = ({
                   setAdditionParentId={setAdditionParentId}
                   type={type || "task"}
                   expanded={expanded}
-                  color={color}
-                />
+                  color={color} 
+                  setTimeEstimate={function (id: string, timeEstimate: number | null): void {
+                    throw new Error("Function not implemented.");
+                  } }                />
               )
             )}
             {/* Invisible bottom drop zone */}
@@ -115,7 +117,7 @@ export const HomeDisplay = ({
                   completed={completed}
                   toggleComplete={async () => {
                     await toggleComplete(_id as Id<"toDoItems">);
-                  }}
+                  } }
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                   openTimeMenu={() => openTimeMenu(_id)}
                   onDragStart={() => handleDragStart(_id)}
@@ -128,8 +130,9 @@ export const HomeDisplay = ({
                   type={type || "task"}
                   setAdditionParentId={setAdditionParentId}
                   expanded={expanded}
-                  color={color}
-                />
+                  color={color} setTimeEstimate={function (id: string, timeEstimate: number | null): void {
+                    throw new Error("Function not implemented.");
+                  } }                />
               )
             )}
           </div>
