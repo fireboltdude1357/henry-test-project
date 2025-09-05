@@ -39,6 +39,12 @@ export const HomeDisplay = ({
   const openTimeMenuLocal = (id: string) => setTimeMenuTaskId(id);
   const closeTimeMenuLocal = () => setTimeMenuTaskId(null);
   const [timeEstimate, setTimeEstimate] = useState(0);
+  const saveTimeEstimate = () => {
+    // Logic to save the time estimate for the task with ID timeMenuTaskId
+    console.log(`Saving time estimate of ${timeEstimate} for task ID: ${timeMenuTaskId}`);
+    // After saving, close the menu
+    closeTimeMenuLocal();
+  }
   return (
     <div className="space-y-8">
       {/* Active Tasks */}
@@ -145,7 +151,7 @@ export const HomeDisplay = ({
       {/* Time Estimate menu -- Opens when timeMenuTaskId is NOT null*/}
       {timeMenuTaskId && (
         <div className="fixed inset-0 inset-z-50 flex items-center justify-center bg-black/20 backdrop-blur">
-          <div className="relative flex items-center justify-center w-[400px] h-[200px] max-w-full bg-slate-800/80 rounded-xl p-8 shadow-xl border border-slate-700/50">
+          <div className="relative flex items-center justify-center w-[500px] h-[200px] max-w-full bg-slate-800/80 rounded-xl p-8 shadow-xl border border-slate-700/50">
             <h1 className="absolute top-6 left-6 text-2xl font-semibold text-white">
               Set Time Estimate
             </h1>
@@ -178,9 +184,17 @@ export const HomeDisplay = ({
                   // defaultValue={0}
                   value={timeEstimate}
                   onChange={e => setTimeEstimate(Number(e.target.value))}
-                  className="w-82 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  className="w-86 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                 />
               </>
+            </div>
+            <div className="m-4 mt-20">
+              <button
+                onClick={saveTimeEstimate}
+                className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
