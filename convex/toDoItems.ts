@@ -383,7 +383,39 @@ export const removeCalendarItem = mutation({
           items: day.items.filter((tid) => tid !== args.id),
         });
       }
+      await ctx.db.patch(args.id, { assignedDate: undefined });
     }
+  },
+});
+
+export const setTimeEstimate = mutation({
+  args: {
+    id: v.id("toDoItems"),
+    timeEstimate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = await ctx.db
+      .query("users")
+      .withIndex("byExternalId", (q) => q.eq("externalId", identity.subject))
+      .unique();
+    if (userId === null) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.id);
+    if (item === null) {
+      throw new Error("To-do item not found");
+    }
+    if (item.userId !== userId._id) {
+      throw new Error("To-do item does not belong to user");
+    }
+
+    return await ctx.db.patch(args.id, { timeEstimate: args.timeEstimate });
   },
 });
 
