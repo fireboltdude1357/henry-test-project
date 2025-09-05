@@ -46,11 +46,17 @@ export const HomeDisplay = ({
   // const timeEstimate = useMutation(api.toDoItems.assignItemToDate);
   const setTimeEstimateMutation = useMutation(api.toDoItems.setTimeEstimate);
   const saveTimeEstimate = async () => {
-    if (timeMenuTaskId) {
-      await setTimeEstimateMutation({ id: timeMenuTaskId as Id<"toDoItems">, timeEstimate });
-      closeTimeMenuLocal();
-    }
-  };
+  if (timeMenuTaskId) {
+    const hours = Math.floor(timeEstimate / 4);
+    const minutes = (timeEstimate % 4) * 15;
+    await setTimeEstimateMutation({
+      id: timeMenuTaskId as Id<"toDoItems">,
+      timeEstimateHours: hours,
+      timeEstimateMinutes: minutes,
+    });
+    closeTimeMenuLocal();
+  }
+};
   return (
     <div className="space-y-8">
       {/* Active Tasks */}

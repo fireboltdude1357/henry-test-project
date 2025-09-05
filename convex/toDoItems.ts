@@ -392,6 +392,8 @@ export const setTimeEstimate = mutation({
   args: {
     id: v.id("toDoItems"),
     timeEstimate: v.optional(v.number()),
+    timeEstimateHours: v.optional(v.number()),  
+    timeEstimateMinutes: v.optional(v.number()), 
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -415,7 +417,11 @@ export const setTimeEstimate = mutation({
       throw new Error("To-do item does not belong to user");
     }
 
-    return await ctx.db.patch(args.id, { timeEstimate: args.timeEstimate });
+    await ctx.db.patch(args.id, {
+      timeEstimateHours: args.timeEstimateHours,
+      timeEstimateMinutes: args.timeEstimateMinutes,
+    });
+
   },
 });
 
