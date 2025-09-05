@@ -4,6 +4,10 @@ import { TaskCard } from "../itemCards/home/taskCard";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useState } from "react";
 import { time } from "console";
+import { api } from "../../../convex/_generated/api";
+import { useMutation } from "convex/react";
+
+
 
 export const HomeDisplay = ({
   activeTasks,
@@ -39,12 +43,14 @@ export const HomeDisplay = ({
   const openTimeMenuLocal = (id: string) => setTimeMenuTaskId(id);
   const closeTimeMenuLocal = () => setTimeMenuTaskId(null);
   const [timeEstimate, setTimeEstimate] = useState(0);
-  const saveTimeEstimate = () => {
-    // Logic to save the time estimate for the task with ID timeMenuTaskId
-    console.log(`Saving time estimate of ${timeEstimate} for task ID: ${timeMenuTaskId}`);
-    // After saving, close the menu
-    closeTimeMenuLocal();
-  }
+  // const timeEstimate = useMutation(api.toDoItems.assignItemToDate);
+  const setTimeEstimateMutation = useMutation(api.toDoItems.setTimeEstimate);
+  const saveTimeEstimate = async () => {
+    if (timeMenuTaskId) {
+      await setTimeEstimateMutation({ id: timeMenuTaskId as Id<"toDoItems">, timeEstimate });
+      closeTimeMenuLocal();
+    }
+  };
   return (
     <div className="space-y-8">
       {/* Active Tasks */}
@@ -63,7 +69,7 @@ export const HomeDisplay = ({
                   completed={completed}
                   toggleComplete={async () => {
                     await toggleComplete(_id as Id<"toDoItems">);
-                  } }
+                  }}
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                   openTimeMenu={openTimeMenuLocal}
                   onDragStart={() => handleDragStart(_id)}
@@ -76,10 +82,10 @@ export const HomeDisplay = ({
                   setAdditionParentId={setAdditionParentId}
                   type={type || "task"}
                   expanded={expanded}
-                  color={color} 
+                  color={color}
                   setTimeEstimate={function (id: string, timeEstimate: number | null): void {
                     throw new Error("Function not implemented.");
-                  } }                />
+                  }} />
               )
             )}
             {/* Invisible bottom drop zone */}
@@ -117,7 +123,7 @@ export const HomeDisplay = ({
                   completed={completed}
                   toggleComplete={async () => {
                     await toggleComplete(_id as Id<"toDoItems">);
-                  } }
+                  }}
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
                   openTimeMenu={() => openTimeMenu(_id)}
                   onDragStart={() => handleDragStart(_id)}
@@ -132,7 +138,7 @@ export const HomeDisplay = ({
                   expanded={expanded}
                   color={color} setTimeEstimate={function (id: string, timeEstimate: number | null): void {
                     throw new Error("Function not implemented.");
-                  } }                />
+                  }} />
               )
             )}
           </div>
@@ -198,7 +204,7 @@ export const HomeDisplay = ({
                 //   if (timeEstimate )
                 //    saveTimeEstimate();
                 // }}
-                
+
                 className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200"
               >
                 Save
