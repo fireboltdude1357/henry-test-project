@@ -383,6 +383,7 @@ export const removeCalendarItem = mutation({
           items: day.items.filter((tid) => tid !== args.id),
         });
       }
+      await ctx.db.patch(args.id, { assignedDate: undefined });
     }
   },
 });
