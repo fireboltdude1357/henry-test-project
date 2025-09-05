@@ -3,6 +3,7 @@ import { Id, Doc } from "../../../convex/_generated/dataModel";
 import { TaskCard } from "../itemCards/home/taskCard";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useState } from "react";
+import { time } from "console";
 
 export const HomeDisplay = ({
   activeTasks,
@@ -37,6 +38,7 @@ export const HomeDisplay = ({
   const [timeMenuTaskId, setTimeMenuTaskId] = useState<string | null>(null);
   const openTimeMenuLocal = (id: string) => setTimeMenuTaskId(id);
   const closeTimeMenuLocal = () => setTimeMenuTaskId(null);
+  const [timeEstimate, setTimeEstimate] = useState(0);
   return (
     <div className="space-y-8">
       {/* Active Tasks */}
@@ -143,8 +145,10 @@ export const HomeDisplay = ({
       {/* Time Estimate menu -- Opens when timeMenuTaskId is NOT null*/}
       {timeMenuTaskId && (
         <div className="fixed inset-0 inset-z-50 flex items-center justify-center bg-black/20 backdrop-blur">
-          <div className="relative flex items-center justify-center w-[400px] h-[300px] max-w-full bg-slate-800/80 rounded-xl p-8 shadow-xl border border-slate-700/50">
-
+          <div className="relative flex items-center justify-center w-[400px] h-[200px] max-w-full bg-slate-800/80 rounded-xl p-8 shadow-xl border border-slate-700/50">
+            <h1 className="absolute top-6 left-6 text-2xl font-semibold text-white">
+              Set Time Estimate
+            </h1>
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
                 <button
@@ -158,23 +162,26 @@ export const HomeDisplay = ({
                 </button>
               </Tooltip.Trigger>
             </Tooltip.Root>
-            <>
-              <label
-                htmlFor="minmax-range"
-                className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-              >
-                Time Estimate
-              </label>
-              <input
-                id="minmax-range"
-                type="range"
-                min={0}
-                max={10}
-                defaultValue={0}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-              />
-            </>
-
+            <div className="mt-12">
+              <>
+                <label
+                  htmlFor="minmax-range"
+                  className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  {`${Math.floor(timeEstimate / 4)} hours${(timeEstimate % 4) ? ` and ${(timeEstimate % 4) * 15} minutes` : ""}`}
+                </label>
+                <input
+                  id="minmax-range"
+                  type="range"
+                  min={0}
+                  max={24}
+                  // defaultValue={0}
+                  value={timeEstimate}
+                  onChange={e => setTimeEstimate(Number(e.target.value))}
+                  className="w-82 h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                />
+              </>
+            </div>
           </div>
         </div>
       )}
