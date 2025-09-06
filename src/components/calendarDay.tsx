@@ -5,6 +5,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useRef, useState, useEffect } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
+
 // Reusable pop sound for completion. Safe-guarded for SSR.
 let popAudio: HTMLAudioElement | null = null;
 function playCompletionPop(): void {
@@ -398,6 +399,19 @@ function ProjectDayItem({
     if (!el) return;
     setIsTitleTruncated(el.scrollWidth > el.clientWidth);
   };
+  const toDoItems = useQuery(api.toDoItems.get, {}) ?? [];
+  const childTasks = toDoItems?.filter(
+    (i) => i.parentId === item._id && i.type === "task"
+  ) ?? [];
+  const totalMinutes = childTasks.reduce((sum, child) => {
+    const hours = child.timeEstimateHours ?? 0;
+    const minutes = child.timeEstimateMinutes ?? 0;
+    return sum + hours * 60 + minutes;
+  }, 0);
+
+  const displayHours = Math.floor(totalMinutes / 60);
+  const displayMinutes = totalMinutes % 60;
+
   useEffect(() => {
     measureTitle();
     const handler = () => measureTitle();
@@ -502,14 +516,19 @@ function ProjectDayItem({
             </Tooltip.Content>
           </Tooltip.Portal>
         </Tooltip.Root>
+
         <div className="flex-1 min-w-0 relative group">
-          <div
-            ref={titleRef}
-            onMouseEnter={measureTitle}
-            className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"} whitespace-normal break-words`}
-          >
-            {item?.text}
+          <div className="flex items-center gap-1">
+            <div
+              ref={titleRef}
+              onMouseEnter={measureTitle}
+              className={`text-sm font-medium ${item?.completed ? "line-through text-slate-400" : "text-white"} whitespace-normal break-words`}
+            >
+              {item?.text}
+            </div>
+            <span className="absolute right-11 text-slate-400 text-[10px] sm:text-s ml-2">({displayHours}h {displayMinutes}m)</span>
           </div>
+
           {parentTitle && (
             <div className="text-[11px] text-slate-400 mt-0.5">
               in {parentTitle}
@@ -966,6 +985,7 @@ export default function CalendarDay({
         {/* Tasks for this day */}
         <div className="p-6 pt-4 pb-6 overflow-auto" style={{ flex: 1 }}>
           <div className="space-y-3 mb-4">
+
             {dayItemsSorted.length > 0 ? (
               dayItemsSorted.map((item) =>
                 item?.type === "project" || item?.type === "folder" ? (
@@ -1041,6 +1061,7 @@ export default function CalendarDay({
                     onDragLeave={(e) => {
                       e.stopPropagation();
                     }}
+
                   >
                     <div className="flex items-start gap-3 select-none cursor-grab active:cursor-grabbing group">
                       {draggedOverItemId === date + String(item?._id) && (
@@ -1114,6 +1135,7 @@ export default function CalendarDay({
                           </div>
                         )}
                       </div>
+                      <span className="text-slate-400 text-[10px] sm:text-s ml-2 pt-1">({item.timeEstimateHours ?? 0}h {item.timeEstimateMinutes ?? 0}m)</span>
                       {/* remove button*/}
                       <button
                         onClick={() => removeCalendarItem({ id: item._id })}
