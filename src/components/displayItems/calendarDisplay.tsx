@@ -91,6 +91,8 @@ export const CalendarItemDisplay = ({
                 parentId,
                 expanded,
                 color,
+                timeEstimateHours,
+                timeEstimateMinutes,
               }) => {
                 // Only show highlight when dragging within the same layer:
                 // - If the dragged item has a parent, only highlight items with that same parent
@@ -140,6 +142,8 @@ export const CalendarItemDisplay = ({
                     draggedItemIsChild={Boolean(dragged?.parentId)}
                     expanded={expanded}
                     color={color}
+                    timeEstimateHours={timeEstimateHours}
+                    timeEstimateMinutes={timeEstimateMinutes}
                   />
                 );
               }
@@ -175,7 +179,7 @@ export const CalendarItemDisplay = ({
         ) : (
           <div className="space-y-3 pr-2">
             {completedTasks.map(
-              ({ _id, text, completed, mainOrder, type, expanded, color }) => (
+              ({ _id, text, completed, mainOrder, type, expanded, color, timeEstimateHours, timeEstimateMinutes }) => (
                 <ItemCard
                   key={_id}
                   _id={_id}
@@ -201,6 +205,8 @@ export const CalendarItemDisplay = ({
                   setChildDraggedItemId={setChildDraggedItemId}
                   expanded={expanded}
                   color={color}
+                  timeEstimateHours={timeEstimateHours}
+                  timeEstimateMinutes={timeEstimateMinutes}
                 />
               )
             )}

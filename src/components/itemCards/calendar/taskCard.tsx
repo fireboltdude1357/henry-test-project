@@ -2,6 +2,8 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { playCompletionPop } from "../../../utils/sounds";
 import { useEffect, useRef, useState } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
+import { api } from "../../../../convex/_generated/api";
+import { useQuery } from "convex/react";
 
 export const TaskCard = ({
   _id,
@@ -20,6 +22,9 @@ export const TaskCard = ({
   draggedItemId,
   setDraggedItemId,
   showHighlight,
+  timeEstimateHours,
+  timeEstimateMinutes,
+
 }: {
   _id: string;
   text: string;
@@ -37,6 +42,8 @@ export const TaskCard = ({
   draggedItemId: string | null;
   setDraggedItemId: (id: string | null) => void;
   showHighlight?: boolean;
+  timeEstimateHours?: number | undefined;
+  timeEstimateMinutes?: number | undefined;
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
   const isDraggedOver =
@@ -128,6 +135,7 @@ export const TaskCard = ({
             {`${text}`}
           </div>
         )}
+        <span className="text-slate-400 text-[10px] sm:text-xs ml-2">({timeEstimateHours ?? 0}h {timeEstimateMinutes ?? 0}m)</span>
         <span className="text-slate-400 text-xs">({mainOrder})</span>
         <Tooltip.Root>
           <Tooltip.Trigger asChild>

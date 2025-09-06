@@ -42,7 +42,6 @@ export const TaskCard = ({
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
   const isDraggedOver = draggedOverItemId === _id;
-  const toDoItems = useQuery(api.toDoItems.get);
   return (
     <div
       key={_id}

@@ -33,6 +33,8 @@ interface ItemCardProps {
   draggedItemIsChild?: boolean;
   expanded?: boolean;
   color?: string;
+  timeEstimateHours?: number | undefined;
+  timeEstimateMinutes?: number | undefined;
 }
 
 export const ItemCard = ({ type, ...props }: ItemCardProps) => {

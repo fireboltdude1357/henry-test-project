@@ -125,7 +125,7 @@ export const HomeDisplay = ({
           </h3>
           <div className="space-y-3">
             {completedTasks.map(
-              ({ _id, text, completed, mainOrder, type, expanded, color }) => (
+              ({ _id, text, completed, mainOrder, type, expanded, color, timeEstimateHours, timeEstimateMinutes }) => (
                 <ItemCard
                   key={_id}
                   _id={_id}
@@ -135,7 +135,7 @@ export const HomeDisplay = ({
                     await toggleComplete(_id as Id<"toDoItems">);
                   }}
                   deleteItem={() => deleteItem(_id as Id<"toDoItems">)}
-                  openTimeMenu={() => openTimeMenu(_id)}
+                  openTimeMenu={openTimeMenuLocal}
                   onDragStart={() => handleDragStart(_id)}
                   onDragEnd={() => handleDragEnd(_id)}
                   onDragOver={(id, e) => handleDragOver(id, e)}
@@ -148,7 +148,10 @@ export const HomeDisplay = ({
                   expanded={expanded}
                   color={color} setTimeEstimate={function (id: string, timeEstimate: number | null): void {
                     throw new Error("Function not implemented.");
-                  }} />
+                  }} 
+                  timeEstimateHours={timeEstimateHours}
+                  timeEstimateMinutes={timeEstimateMinutes}
+                  />
               )
             )}
           </div>
