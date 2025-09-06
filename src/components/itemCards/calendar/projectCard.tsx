@@ -233,6 +233,14 @@ export const ProjectCard = ({
       setAdditionParentId(null);
     }
   };
+  const totalMinutes = (children ?? []).reduce((sum, child) => {
+    const hours = child.timeEstimateHours ?? 0;
+    const minutes = child.timeEstimateMinutes ?? 0;
+    return sum + hours * 60 + minutes;
+  }, 0);
+  const displayHours = Math.floor(totalMinutes / 60);
+  const displayMinutes = totalMinutes % 60;
+
 
   return (
     <div className="relative">
@@ -262,10 +270,10 @@ export const ProjectCard = ({
           onDragEnd?.(_id);
         }}
         className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move relative ${color
-            ? ""
-            : completed
-              ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
-              : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
+          ? ""
+          : completed
+            ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
+            : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
           }`}
         style={
           color
@@ -286,8 +294,8 @@ export const ProjectCard = ({
               if (!wasCompleted) playCompletionPop();
             }}
             className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${completed
-                ? "text-purple-600 focus:ring-purple-500"
-                : "text-purple-600 focus:ring-purple-500"
+              ? "text-purple-600 focus:ring-purple-500"
+              : "text-purple-600 focus:ring-purple-500"
               }`}
           />
           <Tooltip.Root>
@@ -318,7 +326,7 @@ export const ProjectCard = ({
                     strokeWidth={2}
                     d="M9 5l7 7-7 7"
                   />
-                  
+
                 </svg>
               </button>
             </Tooltip.Trigger>
@@ -353,8 +361,8 @@ export const ProjectCard = ({
               {`${text}`}
             </div>
           )}
-          <span className="text-slate-400 text-[10px] sm:text-xs ml-2 pr-6.5">({0}h {0}m)</span>
-          
+          <span className="text-slate-400 text-[10px] sm:text-xs ml-2 pr-6.5">({displayHours}h {displayMinutes}m)</span>
+
           <button
             onClick={handleDelete}
             className="opacity-0 group-hover:opacity-100 p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all duration-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/50"

@@ -184,10 +184,18 @@ export const ProjectCard = ({
     setIsExpanded(next);
     try {
       await setExpandedMutation({ id: _id as Id<"toDoItems">, expanded: next });
-    } catch {}
+    } catch { }
   };
   const completedChildren = children?.filter((child) => child.completed);
   const uncompletedChildren = children?.filter((child) => !child.completed);
+  const totalMinutes = (children ?? []).reduce((sum, child) => {
+    const hours = child.timeEstimateHours ?? 0;
+    const minutes = child.timeEstimateMinutes ?? 0;
+    return sum + hours * 60 + minutes;
+  }, 0);
+  const displayHours = Math.floor(totalMinutes / 60);
+  const displayMinutes = totalMinutes % 60;
+
   return (
     <div className="relative">
       <div
@@ -210,17 +218,16 @@ export const ProjectCard = ({
         onDragLeave={() => {
           onDragLeave?.(_id);
         }}
-        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${
-          completed
-            ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
-            : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
-        }`}
+        className={`backdrop-blur-sm rounded-lg p-4 border transition-all duration-200 shadow-lg hover:shadow-xl group cursor-move ${completed
+          ? "bg-purple-900/20 border-purple-700/20 opacity-75 hover:opacity-100"
+          : "bg-purple-900/30 border-purple-700/30 hover:border-purple-600/50"
+          }`}
         style={
           localColor
             ? {
-                backgroundColor: `rgba(${parseInt(localColor.slice(1, 3), 16)}, ${parseInt(localColor.slice(3, 5), 16)}, ${parseInt(localColor.slice(5, 7), 16)}, 0.12)`,
-                borderColor: `rgba(${parseInt(localColor.slice(1, 3), 16)}, ${parseInt(localColor.slice(3, 5), 16)}, ${parseInt(localColor.slice(5, 7), 16)}, 0.6)`,
-              }
+              backgroundColor: `rgba(${parseInt(localColor.slice(1, 3), 16)}, ${parseInt(localColor.slice(3, 5), 16)}, ${parseInt(localColor.slice(5, 7), 16)}, 0.12)`,
+              borderColor: `rgba(${parseInt(localColor.slice(1, 3), 16)}, ${parseInt(localColor.slice(3, 5), 16)}, ${parseInt(localColor.slice(5, 7), 16)}, 0.6)`,
+            }
             : undefined
         }
       >
@@ -233,11 +240,10 @@ export const ProjectCard = ({
               await toggleComplete(_id);
               if (!wasCompleted) playCompletionPop();
             }}
-            className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${
-              completed
-                ? "text-purple-600 focus:ring-purple-500"
-                : "text-purple-600 focus:ring-purple-500"
-            }`}
+            className={`h-5 w-5 rounded border-slate-600 bg-slate-700 focus:ring-offset-0 transition-colors duration-200 ${completed
+              ? "text-purple-600 focus:ring-purple-500"
+              : "text-purple-600 focus:ring-purple-500"
+              }`}
           />
           <button
             onClick={toggleExpanded}
@@ -246,9 +252,8 @@ export const ProjectCard = ({
             title={isExpanded ? "Collapse project" : "Expand project"}
           >
             <svg
-              className={`w-4 h-4 mr-1 transition-transform duration-200 ${
-                isExpanded ? "rotate-90" : "rotate-0"
-              }`}
+              className={`w-4 h-4 mr-1 transition-transform duration-200 ${isExpanded ? "rotate-90" : "rotate-0"
+                }`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -283,17 +288,16 @@ export const ProjectCard = ({
                     id: _id as Id<"toDoItems">,
                     color: next,
                   });
-                } catch {}
+                } catch { }
               }}
               className="absolute left-0 top-0 opacity-0 w-0 h-0 pointer-events-none"
             />
           </div>
           <span
-            className={`flex-1 transition-colors duration-200 font-medium ${
-              completed
-                ? "text-purple-400 line-through"
-                : "text-purple-100 group-hover:text-purple-50"
-            }`}
+            className={`flex-1 transition-colors duration-200 font-medium ${completed
+              ? "text-purple-400 line-through"
+              : "text-purple-100 group-hover:text-purple-50"
+              }`}
           >
             {text}
             {uncompletedChildren && uncompletedChildren.length > 0 && (
@@ -302,7 +306,7 @@ export const ProjectCard = ({
                 {uncompletedChildren.length !== 1 ? "s" : ""})
               </span>
             )}
-            <span className="text-slate-400 text-[10px] sm:text-xs ml-2">({0}h {0}m)</span>
+            <span className="text-slate-400 text-[10px] sm:text-xs ml-2">({displayHours}h {displayMinutes}m)</span>
           </span>
           {setAdditionParentId && (
             <button
