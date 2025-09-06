@@ -302,6 +302,7 @@ export const ProjectCard = ({
                 {uncompletedChildren.length !== 1 ? "s" : ""})
               </span>
             )}
+            <span className="text-slate-400 text-[10px] sm:text-xs ml-2">({0}h {0}m)</span>
           </span>
           {setAdditionParentId && (
             <button
@@ -379,6 +380,8 @@ export const ProjectCard = ({
               type={child.type || "task"}
               expanded={child.expanded}
               color={child.color}
+              timeEstimateHours={child.timeEstimateHours}
+              timeEstimateMinutes={child.timeEstimateMinutes}
             />
           ))}
           {/* Bottom drop zone for child items */}
@@ -419,6 +422,8 @@ export const ProjectCard = ({
               type={child.type || "task"}
               expanded={child.expanded}
               color={child.color}
+              timeEstimateHours={child.timeEstimateHours}
+              timeEstimateMinutes={child.timeEstimateMinutes}
             />
           ))}
         </div>

@@ -353,6 +353,7 @@ export const ProjectCard = ({
               {`${text}`}
             </div>
           )}
+          <span className="text-slate-400 text-[10px] sm:text-xs ml-2 pr-6.5">({0}h {0}m)</span>
           
           <button
             onClick={handleDelete}
@@ -411,6 +412,8 @@ export const ProjectCard = ({
               childDraggedItemId={null}
               expanded={child.expanded}
               color={child.color}
+              timeEstimateHours={child.timeEstimateHours}
+              timeEstimateMinutes={child.timeEstimateMinutes}
             />
           ))}
         </div>
