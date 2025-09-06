@@ -1,5 +1,8 @@
 import { Id } from "../../../../convex/_generated/dataModel";
+import { setTimeEstimate } from "../../../../convex/toDoItems";
 import { playCompletionPop } from "../../../utils/sounds";
+import { api } from "../../../../convex/_generated/api";
+import { useQuery } from "convex/react";
 
 export const TaskCard = ({
   _id,
@@ -15,6 +18,8 @@ export const TaskCard = ({
   onDragLeave,
   draggedOverItemId,
   mainOrder,
+  timeEstimateHours,
+  timeEstimateMinutes,
 
 }: {
   _id: string;
@@ -29,12 +34,15 @@ export const TaskCard = ({
   onDragEnter?: (id: string) => void;
   onDragLeave?: (id: string) => void;
   draggedOverItemId?: string | null;
-  mainOrder: number;
+  mainOrder: number | undefined;
   setAdditionParentId?: (id: Id<"toDoItems"> | null) => void;
+  timeEstimateHours?: number | undefined;
+  timeEstimateMinutes?: number | undefined;
 
 }) => {
   // console.log("draggedOverItemId", draggedOverItemId);
   const isDraggedOver = draggedOverItemId === _id;
+  const toDoItems = useQuery(api.toDoItems.get);
   return (
     <div
       key={_id}
@@ -83,6 +91,9 @@ export const TaskCard = ({
             }`}
         >
           <span className="text-sm sm:text-base">{text}</span>
+
+          <span className="text-slate-400 text-[10px] sm:text-xs ml-2">({timeEstimateHours ?? 0}h {timeEstimateMinutes ?? 0}m)</span>
+
         </span>
         {/* Time Estimate Menu Button */}
         <button
@@ -121,6 +132,6 @@ export const TaskCard = ({
         <div className="absolute top-[-6px] left-0 right-0 h-[3px] bg-blue-500 rounded-full"></div>
       )}
     </div>
-    
+
   );
 };
