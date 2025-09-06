@@ -12,6 +12,7 @@ export const ProjectCard = ({
   toggleComplete,
   // deleteItem is intentionally unused in this view
   deleteItem: _unusedDelete, // eslint-disable-line @typescript-eslint/no-unused-vars
+  openTimeMenu,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -28,6 +29,7 @@ export const ProjectCard = ({
   completed: boolean;
   toggleComplete: (id: string) => void;
   deleteItem: (id: string) => void;
+  openTimeMenu: (id: string) => void;
   onDragStart?: (id: string) => void;
   onDragEnd?: (id: string) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;
@@ -365,6 +367,7 @@ export const ProjectCard = ({
               deleteItem={() =>
                 deleteChildItem({ id: child._id as Id<"toDoItems"> })
               }
+              openTimeMenu={() => openTimeMenu(child._id)}
               onDragStart={() => handleDragStart(child._id)}
               onDragEnd={() => handleDragEnd(child._id)}
               onDragOver={(id) => handleDragOver(id)}
@@ -411,6 +414,7 @@ export const ProjectCard = ({
               deleteItem={() =>
                 deleteChildItem({ id: child._id as Id<"toDoItems"> })
               }
+              openTimeMenu={() => openTimeMenu(child._id)}
               mainOrder={child.mainOrder ?? 0}
               type={child.type || "task"}
               expanded={child.expanded}

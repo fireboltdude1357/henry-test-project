@@ -9,7 +9,7 @@ interface ItemCardProps {
   toggleComplete: (id: string) => void;
   deleteItem: (id: string) => void;
   openTimeMenu: (id: string) => void;
-  setTimeEstimate: (id: string, timeEstimate: number | null) => void;
+  setTimeEstimate?: (id: string, timeEstimate: number | null) => void;
   onDragStart?: (id: string) => void;
   onDragEnd?: (id: string) => void;
   onDragOver?: (id: string, e: React.DragEvent) => void;
